@@ -29,3 +29,11 @@ CQO is still under development.
 - CQO cannot be added to existing servers yet. 
 
 If you have any feedback, please DM.
+
+## For contribution
+
+Pull requests and issues are welcome. 
+
+Note that the source code is designed to work, not designed to look good not be elegant. 
+
+Nuclear-level code cleanup will be required, but only after the thing is proven working. 
