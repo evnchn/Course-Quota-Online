@@ -37,7 +37,7 @@ while True:
 
         url = '{}subject/{}'.format(endpoint, dept)
         
-        url = "http://localhost:8000/{}".format(dept)
+        #url = "http://localhost:8000/{}".format(dept)
 
         page = requests.get(url)
         
@@ -115,7 +115,7 @@ while True:
     print(allcourses_dict["MARK5120"]['COURSE_INFO']['INTENDED_LEARNING_OUTCOMES'])
     
     try:
-        with open("latest_state.json".format(time.time()),"r") as f:
+        with open("latest_state.json","r") as f:
             allcourses_dict_old = json.load(f)
 
         #pyperclip.copy(output)
@@ -134,8 +134,9 @@ while True:
 
     except Exception as e:
         print(e)
+        input()
         
-    with open("latest_state.json".format(time.time()),"w") as f:
+    with open("latest_state.json","w") as f:
         json.dump(allcourses_dict, f)
     
     #time.sleep(300)

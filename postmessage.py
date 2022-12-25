@@ -262,7 +262,7 @@ async def myLoop():
 
             url = '{}subject/{}'.format(endpoint, dept)
             
-            url = "http://localhost:8000/{}".format(dept)
+            #url = "http://localhost:8000/{}".format(dept)
 
             page = requests.get(url)
             
