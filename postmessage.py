@@ -38,7 +38,7 @@ def filter_phantom_change(diff):
         location = ".".join(str(x) for x in location)
         
     if event == "change":
-        if content[0].replace("\r","").replace("\n","") == content[1].replace("\r","").replace("\n",""):
+        if isinstance(content[0], str) and isinstance(content[1], str) and content[0].replace("\r","").replace("\n","") == content[1].replace("\r","").replace("\n",""):
             return False
     return True
 
@@ -224,211 +224,244 @@ async def on_ready():
                 
 @tasks.loop(seconds = 60) # repeat after every 10 seconds
 async def myLoop():
-    for guild in client.guilds:
-        if guild.name == GUILD:
-            break
-
-    print(
-        f'{client.user} is connected to the following guild:\n'
-        f'{guild.name}(id: {guild.id})'
-    )
-    allcourses_dict = {}
     try:
-        debug_write_to_file = False
 
-        endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
+        for guild in client.guilds:
+            if guild.name == GUILD:
+                break
+        print(
+            f'{client.user} is connected to the following guild:\n'
+            f'{guild.name}(id: {guild.id})'
+        )
+        allcourses_dict = {}
+        try:
+            debug_write_to_file = False
 
-        endpoint = requests.head(endpoint, allow_redirects=True).url
+            endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
 
-        print(endpoint)
+            endpoint = requests.head(endpoint, allow_redirects=True).url
+
+            print(endpoint)
 
 
-        url = endpoint
-
-        page = requests.get(url)
-
-        soup = bs.BeautifulSoup(page.text,'lxml')
-
-        depts = soup.select('.depts')[0]
-        
-        depts = depts.get_text("\n").split("\n")
-        
-        print(depts)
-        #os.system("cls")
-
-        
-
-        for dept in tqdm(depts):
-
-            url = '{}subject/{}'.format(endpoint, dept)
-            
-            #url = "http://localhost:8000/{}".format(dept)
+            url = endpoint
 
             page = requests.get(url)
-            
-            if debug_write_to_file:
-                with open(dept, "w", encoding="utf-8") as rf:
-                    rf.write(page.text)
 
             soup = bs.BeautifulSoup(page.text,'lxml')
 
-            courses = soup.select('#classes > .course')
+            depts = soup.select('.depts')[0]
             
+            depts = depts.get_text("\n").split("\n")
             
-            buffered_coursetable_row = []
+            print(depts)
+            #os.system("cls")
+
             
-            for course in courses:
-                coursetitle = course.select("h2")[0].decode_contents()
-                courseinfo = course.select(".courseattr.popup > .popupdetail > table")
-                assert len(courseinfo) == 1
-                courseinfo = courseinfo[0]
-                courseinfo_dict = {}
-                for row in courseinfo.select("tr"):
-                    if len(row.find_parents("table")) == 1:
-                        thead = row.select("th")[0].get_text(separator="_")
-                        tcontent = row.select("td")[0].get_text(separator=" ")
-                        courseinfo_dict[thead] = tcontent
-                    else: 
-                        pass
-                coursetable = course.select("table.sections")
-                assert len(coursetable) == 1
-                coursetable = coursetable[0]
-                coursetable_list_dicts = []
-                keys = coursetable.select('tr')[0].select("th")
-                keys = [k.text.replace(" & ", "_N_") for k in keys]
-                for row in coursetable.select('tr')[1:]:
-                    fields = row.select("td")
-                    
-                    if buffered_coursetable_row and len(fields) == 3: # is an extension
-                        buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
-                        buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
-                        buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
-                        buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
-                        buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))
-                        #print(buffered_coursetable_row, buffered_coursetable_row_2)
-                        buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]
-                        continue # we are done
+
+            for dept in (depts):
+
+                url = '{}subject/{}'.format(endpoint, dept)
+                
+                #url = "http://localhost:8000/{}".format(dept)
+
+                page = requests.get(url)
+                
+                if debug_write_to_file:
+                    with open(dept, "w", encoding="utf-8") as rf:
+                        rf.write(page.text)
+
+                soup = bs.BeautifulSoup(page.text,'lxml')
+
+                courses = soup.select('#classes > .course')
+                
+                
+                buffered_coursetable_row = []
+                
+                for course in courses:
+                    coursetitle = course.select("h2")[0].decode_contents()
+                    courseinfo = course.select(".courseattr.popup > .popupdetail > table")
+                    try:
+                        assert len(courseinfo) == 1
+                        courseinfo = courseinfo[0]
+                        courseinfo_dict = {}
+                        for row in courseinfo.select("tr"):
+                            if len(row.find_parents("table")) == 1:
+                                thead = row.select("th")[0].get_text(separator="_")
+                                tcontent = row.select("td")[0].get_text(separator=" ")
+                                courseinfo_dict[thead] = tcontent
+                            else: 
+                                pass
+                    except:
+                        courseinfo_dict = {"FAILURE":"course_popup_table_count_mismatch", "TABLE_COUNT":len(courseinfo)}
+                    coursetable = course.select("table.sections")
+                    course_table_length_mismatch = False
+                    try:
+                        assert len(coursetable) == 1
+                    except:
+                        coursetable_len = len(coursetable)
+                        course_table_length_mismatch = True
+                    coursetable = coursetable[0]
+                    coursetable_list_dicts = []
+                    keys = coursetable.select('tr')[0].select("th")
+                    keys = [k.text.replace(" & ", "_N_") for k in keys]
+                    for row in coursetable.select('tr')[1:]:
+                        fields = row.select("td")
+                        
+                        if buffered_coursetable_row and len(fields) == 3: # is an extension
+                            buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
+                            buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
+                            buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
+                            buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
+                            buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))
+                            print(buffered_coursetable_row, buffered_coursetable_row_2)
+                            buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]
+                            continue # we are done
+                        else:
+                            if buffered_coursetable_row:
+                                coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
+                                buffered_coursetable_row = []
+                            if len(buffered_coursetable_row) < len(fields):
+                                buffered_coursetable_row = [None for i in range(len(fields))]
+                            for i, field in enumerate(fields):
+                                if field.select("span") and i == 4:
+                                    buffered_coursetable_row[i] = field.select("span")[0].text
+                                elif i in (0,1,2,3,4,5,6,7):
+                                    buffered_coursetable_row[i] = field.get_text(separator="_")
+                                elif i in (8,):
+                                    mkdict = {}
+                                    if field.select(".popup.consent"):
+                                        mkdict["consent"] = True
+                                    else:
+                                        mkdict["consent"] = False
+                                    if field.select(".popup.classnotes"):
+                                        mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
+                                    buffered_coursetable_row[i] = mkdict
+                        #coursetable_list_dicts.append(dict(zip(keys,field2)))
+                    if buffered_coursetable_row:
+                        coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
+                        buffered_coursetable_row = []
+                    coursecode = coursetitle.split("-")[0].strip().replace(" ","")
+                    if course_table_length_mismatch == True:
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
                     else:
-                        if buffered_coursetable_row:
-                            coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
-                            buffered_coursetable_row = []
-                        if len(buffered_coursetable_row) < len(fields):
-                            buffered_coursetable_row = [None for i in range(len(fields))]
-                        for i, field in enumerate(fields):
-                            if field.select("span") and i == 4:
-                                buffered_coursetable_row[i] = field.select("span")[0].text
-                            elif i in (0,1,2,3,4,5,6,7):
-                                buffered_coursetable_row[i] = field.get_text(separator="_")
-                            elif i in (8,):
-                                mkdict = {}
-                                if field.select(".popup.consent"):
-                                    mkdict["consent"] = True
-                                else:
-                                    mkdict["consent"] = False
-                                if field.select(".popup.classnotes"):
-                                    mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
-                                buffered_coursetable_row[i] = mkdict
-                    #coursetable_list_dicts.append(dict(zip(keys,field2)))
-                if buffered_coursetable_row:
-                    coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
-                    buffered_coursetable_row = []
-                coursecode = coursetitle.split("-")[0].strip().replace(" ","")
-                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
-                
-                
-                
-    except Exception as e:
-        exception_text = traceback.format_exc()
-        exception_text = censor_exception(exception_text)
-        print(exception_text)
-        print(e)
-
-        channel = discord.utils.get(guild.text_channels, name="debug")
-        await channel.send("admin pls help (parsing_all):\n```\n{}\n```\n{}".format(exception_text, e))
-        
-
-
-    #os.system("cls")
-    
-    
-    
-    
-    notif = {}
-    try:
-    
-        with open("latest_state.json".format(time.time()),"r") as f:
-            allcourses_dict_old = json.load(f)
-
-        #pyperclip.copy(output)
-        
-        
-        
-        for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
-            if not diff[1]:
-                # Adding / deleting from root element, fake things a little. 
-                behaviour = diff[0]
-                for course in diff[2]:
-                    os.system("cls")
-                    #print(course)
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
                     
-                    ccode, content = course
-                    #print(ccode[0:4])
-                    #print(notif)
-                    #print(notif.get(ccode[0:4], []))
-                    notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
-                continue
-            expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
-            for expected_channel_name in expected_channel_names_internal:
-                print(diff, expected_channel_name)
-                if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
-                    notif[expected_channel_name] = notif.get(expected_channel_name, []) + [diff]
-                    break
-            else: # no break
-                notif["MISC"] = notif.get("MISC", []) + [diff]
+                    
+                    
+        except Exception as e:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
 
-        print(notif)
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (parsing_all):\n```\n{}\n```\n{}".format(exception_text, e))
+            
 
-    except Exception as e:
-        exception_text = traceback.format_exc()
-        exception_text = censor_exception(exception_text)
-        print(exception_text)
-        print(e)
 
-        channel = discord.utils.get(guild.text_channels, name="debug")
-        await channel.send("admin pls help (sending):\n```\n{}\n```\n{}".format(exception_text, e))
+        #os.system("cls")
         
-    try:
-        with open("latest_state.json".format(time.time()),"w") as f:
-            json.dump(allcourses_dict, f)
+        
+        
+        
+        notif = {}
+        try:
+        
+            with open("latest_state.json".format(time.time()),"r") as f:
+                allcourses_dict_old = json.load(f)
+
+            #pyperclip.copy(output)
+            
+            
+            
+            for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
+                if not diff[1]:
+                    # Adding / deleting from root element, fake things a little. 
+                    behaviour = diff[0]
+                    for course in diff[2]:
+                        os.system("cls")
+                        #print(course)
+                        
+                        ccode, content = course
+                        #print(ccode[0:4])
+                        #print(notif)
+                        #print(notif.get(ccode[0:4], []))
+                        notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
+                    continue
+                expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
+                for expected_channel_name in expected_channel_names_internal:
+                    print(diff, expected_channel_name)
+                    if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
+                        notif[expected_channel_name] = notif.get(expected_channel_name, []) + [diff]
+                        break
+                else: # no break
+                    notif["MISC"] = notif.get("MISC", []) + [diff]
+
+            print(notif)
+
+        except Exception as e:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (sending):\n```\n{}\n```\n{}".format(exception_text, e))
+            
+        try:
+            with open("latest_state.json".format(time.time()),"w") as f:
+                json.dump(allcourses_dict, f)
+        except Exception as e:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (savedict):\n```\n{}\n```\n{}".format(exception_text, e))
+        
+        #time.sleep(300)
+        try:
+            todos = []
+            
+
+            
+            for importancy, suffix in zip((True,False),("-important","")):
+                for k,v in notif.items():
+                    try:
+                        channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
+                        assert channel
+                    except:
+                        channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
+                    for sub_v in v:
+                        if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
+                            print("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v)))
+                            todos.append(channel.send("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v))))
+            print("Begin bang")
+            await asyncio.gather(*todos)
+            print("End bang")
+        except Exception as e:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (make_messages):\n```\n{}\n```\n{}".format(exception_text, e))
     except Exception as e:
         exception_text = traceback.format_exc()
         exception_text = censor_exception(exception_text)
         print(exception_text)
         print(e)
-
-        channel = discord.utils.get(guild.text_channels, name="debug")
-        await channel.send("admin pls help (savedict):\n```\n{}\n```\n{}".format(exception_text, e))
-    
-    #time.sleep(300)
-    
-    todos = []
-    
-
-    
-    for importancy, suffix in zip((True,False),("-important","")):
-        for k,v in notif.items():
-            try:
-                channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
-                assert channel
-            except:
-                channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
-            for sub_v in v:
-                if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                    print("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v)))
-                    todos.append(channel.send("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v))))
-    print("Begin bang")
-    await asyncio.gather(*todos)
-    print("End bang")
+        try:
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (nuclear):\n```\n{}\n```\n{}".format(exception_text, e))
+        except:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
     
 
     

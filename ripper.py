@@ -55,18 +55,26 @@ while True:
         for course in courses:
             coursetitle = course.select("h2")[0].decode_contents()
             courseinfo = course.select(".courseattr.popup > .popupdetail > table")
-            assert len(courseinfo) == 1
-            courseinfo = courseinfo[0]
-            courseinfo_dict = {}
-            for row in courseinfo.select("tr"):
-                if len(row.find_parents("table")) == 1:
-                    thead = row.select("th")[0].get_text(separator="_")
-                    tcontent = row.select("td")[0].get_text(separator=" ")
-                    courseinfo_dict[thead] = tcontent
-                else: 
-                    pass
+            try:
+                assert len(courseinfo) == 1
+                courseinfo = courseinfo[0]
+                courseinfo_dict = {}
+                for row in courseinfo.select("tr"):
+                    if len(row.find_parents("table")) == 1:
+                        thead = row.select("th")[0].get_text(separator="_")
+                        tcontent = row.select("td")[0].get_text(separator=" ")
+                        courseinfo_dict[thead] = tcontent
+                    else: 
+                        pass
+            except:
+                courseinfo_dict = {"FAILURE":"course_popup_table_count_mismatch", "TABLE_COUNT":len(courseinfo)}
             coursetable = course.select("table.sections")
-            assert len(coursetable) == 1
+            course_table_length_mismatch = False
+            try:
+                assert len(coursetable) == 1
+            except:
+                coursetable_len = len(coursetable)
+                course_table_length_mismatch = True
             coursetable = coursetable[0]
             coursetable_list_dicts = []
             keys = coursetable.select('tr')[0].select("th")
@@ -108,14 +116,17 @@ while True:
                 coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
                 buffered_coursetable_row = []
             coursecode = coursetitle.split("-")[0].strip().replace(" ","")
-            allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
+            if course_table_length_mismatch == True:
+                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
+            else:
+                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
 
 
     os.system("cls")
     print(allcourses_dict["MARK5120"]['COURSE_INFO']['INTENDED_LEARNING_OUTCOMES'])
     
     try:
-        with open("latest_state.json","r") as f:
+        with open("latest_state.json".format(time.time()),"r") as f:
             allcourses_dict_old = json.load(f)
 
         #pyperclip.copy(output)
@@ -134,9 +145,8 @@ while True:
 
     except Exception as e:
         print(e)
-        input()
         
-    with open("latest_state.json","w") as f:
+    with open("latest_state.json".format(time.time()),"w") as f:
         json.dump(allcourses_dict, f)
     
     #time.sleep(300)
