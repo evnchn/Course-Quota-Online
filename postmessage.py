@@ -87,7 +87,7 @@ async def on_ready():
         f'{guild.name}(id: {guild.id})'
     )
     
-    category_name = 'Bot Zone No. {}{}'.format(0, "-init")
+    category_name = 'Bot Zone No. {}{}'.format(0, "-misc")
     category = discord.utils.get(guild.categories, name=category_name)
 
     if not category:
@@ -107,7 +107,7 @@ async def on_ready():
                 
     channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
     channels_to_remove += [(i+"-important") for i in channels_to_remove]
-    channels_to_remove = []
+    #channels_to_remove = '''ceng,civl,comp,dbap,econ,eesm,elec,engg,entr,envr,evsm,gfin,isdn,isom,lifs,mafs,mark,mass,mgcs,phys,sbmt,sosc,temg,ceng-important,civl-important,comp-important,dbap-important,econ-important,eesm-important,elec-important,engg-important,entr-important,envr-important,evsm-important,gfin-important,isdn-important,isom-important,lifs-important,mafs-important,mark-important,mass-important,mgcs-important,phys-important,sbmt-important,sosc-important,temg-important,misc,misc-important,debug,bootlog'''.split(",")
     for channel_name in channels_to_remove:
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if channel:
@@ -121,7 +121,6 @@ async def on_ready():
 
         print(endpoint)
 
-
         url = endpoint
 
         page = requests.get(url)
@@ -130,7 +129,10 @@ async def on_ready():
 
         depts = soup.select('.depts')[0]
         
+        depts_plus = [(dept.get_text(""),("PG" if dept.has_attr('class') and "pg" in dept['class'] else "UG")) for dept in depts]
+        depts_plus_dict = dict(depts_plus)
         depts = depts.get_text("\n").split("\n")
+        
         expected_channel_names = depts
     except Exception as e:
         exception_text = traceback.format_exc()
@@ -152,68 +154,80 @@ async def on_ready():
     expected_channel_names.append("bootlog")
     #expected_channel_names.append("summary")
     
-
+    print(",".join(expected_channel_names))
     # Given channel name,  try create in approproate bot zones. 
-    
-    for need_important in (True, False):
-    
-    
-        counter = 1
-        category_name = 'Bot Zone No. {}{}'.format(counter, "-important" if need_important else "")
-        category = discord.utils.get(guild.categories, name=category_name)
-    
-        if not category:
-            await guild.create_category(category_name)
-            print("Created category"+category_name)
-        else:
-            print("Fine, category exists"+category_name)
-    
-        for expected_channel_name in expected_channel_names:
-            if need_important:
-                if "-important" in expected_channel_name:
+    for category_ug_pg in ("UG","PG"):
+        for need_important in (True, False):
+        
+        
+            counter = 1
+            category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
+            category = discord.utils.get(guild.categories, name=category_name)
+        
+            if not category:
+                await guild.create_category(category_name)
+                print("Created category"+category_name)
+            else:
+                print("Fine, category exists"+category_name)
+        
+            for expected_channel_name in expected_channel_names:
+                try:   
+                    #print(depts_plus_dict[expected_channel_name], category_ug_pg)
+                    if depts_plus_dict[expected_channel_name.upper()[0:4]] == category_ug_pg:
+                        if need_important:
+                            if "-important" in expected_channel_name:
+                                channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
+                                category = discord.utils.get(guild.categories, name=category_name)
+                                if not channel:
+                                    try:
+                                        await guild.create_text_channel(expected_channel_name, category=category)
+                                        print("Created Channel",expected_channel_name)
+                                    except:
+                                        counter += 1
+                                        category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
+                                        category = discord.utils.get(guild.categories, name=category_name)
+                                    
+                                        if not category:
+                                            await guild.create_category(category_name)
+                                            print("Created category"+category_name)
+                                        else:
+                                            print("Fine, category exists"+category_name)
+                                            
+                                        await guild.create_text_channel(expected_channel_name, category=category)
+                                        print("Created Channel",expected_channel_name)
+                                else:
+                                    print("Fine, channel",expected_channel_name,"exists :)")
+                        else:
+                            channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
+                            category = discord.utils.get(guild.categories, name=category_name)
+                            if not channel:
+                                try:
+                                    await guild.create_text_channel(expected_channel_name, category=category)
+                                    print("Created Channel",expected_channel_name)
+                                except:
+                                    counter += 1
+                                    category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
+                                    category = discord.utils.get(guild.categories, name=category_name)
+                                
+                                    if not category:
+                                        await guild.create_category(category_name)
+                                        print("Created category"+category_name)
+                                    else:
+                                        print("Fine, category exists"+category_name)
+                                        
+                                    await guild.create_text_channel(expected_channel_name, category=category)
+                                    print("Created Channel",expected_channel_name)
+                            else:
+                                print("Fine, channel",expected_channel_name,"exists :)")
+                except Exception as e:
+                    print(traceback.format_exc())
+                    category_name = 'Bot Zone No. {}{}'.format(0, "-misc")
+                    category = discord.utils.get(guild.categories, name=category_name)
                     channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
                     category = discord.utils.get(guild.categories, name=category_name)
                     if not channel:
-                        try:
-                            await guild.create_text_channel(expected_channel_name, category=category)
-                            print("Created Channel",expected_channel_name)
-                        except:
-                            counter += 1
-                            category_name = 'Bot Zone No. {}{}'.format(counter, "-important" if need_important else "")
-                            category = discord.utils.get(guild.categories, name=category_name)
-                        
-                            if not category:
-                                await guild.create_category(category_name)
-                                print("Created category"+category_name)
-                            else:
-                                print("Fine, category exists"+category_name)
-                                
-                            await guild.create_text_channel(expected_channel_name, category=category)
-                            print("Created Channel",expected_channel_name)
-                    else:
-                        print("Fine, channel",expected_channel_name,"exists :)")
-            else:
-                channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
-                category = discord.utils.get(guild.categories, name=category_name)
-                if not channel:
-                    try:
                         await guild.create_text_channel(expected_channel_name, category=category)
                         print("Created Channel",expected_channel_name)
-                    except:
-                        counter += 1
-                        category_name = 'Bot Zone No. {}{}'.format(counter, "-important" if need_important else "")
-                        category = discord.utils.get(guild.categories, name=category_name)
-                    
-                        if not category:
-                            await guild.create_category(category_name)
-                            print("Created category"+category_name)
-                        else:
-                            print("Fine, category exists"+category_name)
-                            
-                        await guild.create_text_channel(expected_channel_name, category=category)
-                        print("Created Channel",expected_channel_name)
-                else:
-                    print("Fine, channel",expected_channel_name,"exists :)")
     
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     
@@ -235,6 +249,7 @@ async def myLoop():
         )
         allcourses_dict = {}
         try:
+            
             debug_write_to_file = False
 
             endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
@@ -251,7 +266,8 @@ async def myLoop():
             soup = bs.BeautifulSoup(page.text,'lxml')
 
             depts = soup.select('.depts')[0]
-            
+            depts_plus = [(dept.get_text(""),("PG" if dept.has_attr('class') and "pg" in dept['class'] else "UG")) for dept in depts]
+            depts_plus_dict = dict(depts_plus)
             depts = depts.get_text("\n").split("\n")
             
             print(depts)
@@ -266,6 +282,8 @@ async def myLoop():
                 #url = "http://localhost:8000/{}".format(dept)
 
                 page = requests.get(url)
+                
+                assert page.status_code == 200
                 
                 if debug_write_to_file:
                     with open(dept, "w", encoding="utf-8") as rf:
@@ -314,7 +332,7 @@ async def myLoop():
                             buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
                             buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
                             buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))
-                            print(buffered_coursetable_row, buffered_coursetable_row_2)
+                            #print(buffered_coursetable_row, buffered_coursetable_row_2)
                             buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]
                             continue # we are done
                         else:
@@ -354,7 +372,7 @@ async def myLoop():
             exception_text = censor_exception(exception_text)
             print(exception_text)
             print(e)
-
+            allcourses_dict = {}
             channel = discord.utils.get(guild.text_channels, name="debug")
             await channel.send("admin pls help (parsing_all):\n```\n{}\n```\n{}".format(exception_text, e))
             
@@ -367,38 +385,40 @@ async def myLoop():
         
         notif = {}
         try:
-        
+            
             with open("latest_state.json".format(time.time()),"r") as f:
                 allcourses_dict_old = json.load(f)
 
             #pyperclip.copy(output)
             
+            if allcourses_dict_old and allcourses_dict:
             
-            
-            for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
-                if not diff[1]:
-                    # Adding / deleting from root element, fake things a little. 
-                    behaviour = diff[0]
-                    for course in diff[2]:
-                        os.system("cls")
-                        #print(course)
-                        
-                        ccode, content = course
-                        #print(ccode[0:4])
-                        #print(notif)
-                        #print(notif.get(ccode[0:4], []))
-                        notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
-                    continue
-                expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
-                for expected_channel_name in expected_channel_names_internal:
-                    print(diff, expected_channel_name)
-                    if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
-                        notif[expected_channel_name] = notif.get(expected_channel_name, []) + [diff]
-                        break
-                else: # no break
-                    notif["MISC"] = notif.get("MISC", []) + [diff]
+                for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
+                    if not diff[1]:
+                        # Adding / deleting from root element, fake things a little. 
+                        behaviour = diff[0]
+                        for course in diff[2]:
+                            os.system("cls")
+                            #print(course)
+                            
+                            ccode, content = course
+                            #print(ccode[0:4])
+                            #print(notif)
+                            #print(notif.get(ccode[0:4], []))
+                            notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
+                        continue
+                    expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
+                    for expected_channel_name in expected_channel_names_internal:
+                        print(diff, expected_channel_name)
+                        if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
+                            notif[expected_channel_name] = notif.get(expected_channel_name, []) + [diff]
+                            break
+                    else: # no break
+                        notif["MISC"] = notif.get("MISC", []) + [diff]
 
-            print(notif)
+                print(notif)
+            else:
+                raise Exception("Either array is nullish. ")
 
         except Exception as e:
             exception_text = traceback.format_exc()

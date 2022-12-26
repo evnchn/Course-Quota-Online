@@ -5,7 +5,8 @@ from tqdm import tqdm
 import json   
 import pyperclip
 import time
-import dictdiffer                                          
+import dictdiffer  
+import traceback                                        
 
 debug_write_to_file = False
 
@@ -25,9 +26,11 @@ while True:
 
     depts = soup.select('.depts')[0]
     
+    depts_plus = [(dept.get_text(""),("PG" if dept.has_attr('class') and "pg" in dept['class'] else "UG")) for dept in depts]
+    depts_plus_dict = dict(depts_plus)
     depts = depts.get_text("\n").split("\n")
     
-    print(depts)
+    print(depts_plus)
     input()
     os.system("cls")
 
@@ -88,7 +91,7 @@ while True:
                     buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
                     buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
                     buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))
-                    print(buffered_coursetable_row, buffered_coursetable_row_2)
+                    #print(buffered_coursetable_row, buffered_coursetable_row_2)
                     buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]
                     continue # we are done
                 else:
@@ -144,6 +147,7 @@ while True:
         print(notif)
 
     except Exception as e:
+        print(traceback.format_exc())
         print(e)
         
     with open("latest_state.json".format(time.time()),"w") as f:
