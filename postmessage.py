@@ -1,6 +1,9 @@
 # bot.py
-
+fake_endpoint = False
 import bs4 as bs
+
+import grequests
+
 import requests
 import os
 from tqdm import tqdm
@@ -9,7 +12,7 @@ import pyperclip
 import time
 import dictdiffer  
 import traceback
-
+from datetime import datetime
 import asyncio
 
 import os
@@ -18,12 +21,49 @@ import discord
 from dotenv import load_dotenv
 
 from discord.ext import tasks
+'''
+import ssl
+
+FORCED_CIPHERS = (
+    'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
+    'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES'
+)
+sslcontext = ssl.create_default_context()
+# sslcontext.options |= ssl.OP_NO_SSLv3
+# sslcontext.options |= ssl.OP_NO_SSLv2
+# sslcontext.options |= ssl.OP_NO_TLSv1_1
+sslcontext.options |= ssl.OP_NO_TLSv1_2
+# sslcontext.options |= ssl.OP_NO_TLSv1_3
+sslcontext.set_ciphers(FORCED_CIPHERS)'''
+
+import aiohttp
+
+import http3
+
+client_requests = http3.AsyncClient()
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
 client = discord.Client(intents=discord.Intents.default())
+
+
+
+async def do_request(method, url):
+    '''response = await aiohttp.request(
+        method, url, timeout=10
+    )'''
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, timeout=10, ssl=sslcontext) as response:
+            return response
+
+
+
+
+
+
+
 
 def censor_exception(exception_text):
     splitted = exception_text.split("\n")
@@ -76,8 +116,17 @@ def is_important(diff):
             return False
     return True
 
+
+
+channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
+channels_to_remove += [(i+"-important") for i in channels_to_remove]
+channels_to_remove = '''acct,aesf,aiaa,amat,bibu,bien,bsbe,btec,cbme,ceng,chem,chms,ciem,civl,cmaa,comp,core,cpeg,csit,dasc,dbap,dsaa,dsct,econ,eemt,eesm,elec,emba,emia,eneg,engg,entr,envr,envs,eoas,evng,evsm,fina,ftec,gbus,gfin,gned,hlth,hmma,huma,ibtm,ieda,iimp,imba,intr,iota,ipen,isdn,isom,jeve,labu,lang,lifs,maed,mafs,mark,mass,math,mech,mesf,mfit,mgcs,mgmt,mics,mile,mimt,msbd,msdm,mtle,nano,oces,pdev,phys,ppol,rmbi,roas,sbmt,scie,seen,shss,smmg,sosc,sust,temg,ugod,urop,wbba,acct-important,aesf-important,aiaa-important,amat-important,bibu-important,bien-important,bsbe-important,btec-important,cbme-important,ceng-important,chem-important,chms-important,ciem-important,civl-important,cmaa-important,comp-important,core-important,cpeg-important,csit-important,dasc-important,dbap-important,dsaa-important,dsct-important,econ-important,eemt-important,eesm-important,elec-important,emba-important,emia-important,eneg-important,engg-important,entr-important,envr-important,envs-important,eoas-important,evng-important,evsm-important,fina-important,ftec-important,gbus-important,gfin-important,gned-important,hlth-important,hmma-important,huma-important,ibtm-important,ieda-important,iimp-important,imba-important,intr-important,iota-important,ipen-important,isdn-important,isom-important,jeve-important,labu-important,lang-important,lifs-important,maed-important,mafs-important,mark-important,mass-important,math-important,mech-important,mesf-important,mfit-important,mgcs-important,mgmt-important,mics-important,mile-important,mimt-important,msbd-important,msdm-important,mtle-important,nano-important,oces-important,pdev-important,phys-important,ppol-important,rmbi-important,roas-important,sbmt-important,scie-important,seen-important,shss-important,smmg-important,sosc-important,sust-important,temg-important,ugod-important,urop-important,wbba-important,misc,misc-important,debug,bootlog,able'''.split(",")
+
+channels_to_remove = []
+
 @client.event
 async def on_ready():
+    global channels_to_remove
     for guild in client.guilds:
         if guild.name == GUILD:
             break
@@ -93,8 +142,10 @@ async def on_ready():
     if not category:
         await guild.create_category(category_name)
         print("Created category"+category_name)
+        category = discord.utils.get(guild.categories, name=category_name)
     else:
         print("Fine, category exists"+category_name)
+    
     for important_preboot_channels in ("debug", "bootlog"):
         channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
         if not channel:
@@ -105,13 +156,13 @@ async def on_ready():
                 
                 
                 
-    channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
-    channels_to_remove += [(i+"-important") for i in channels_to_remove]
-    #channels_to_remove = '''ceng,civl,comp,dbap,econ,eesm,elec,engg,entr,envr,evsm,gfin,isdn,isom,lifs,mafs,mark,mass,mgcs,phys,sbmt,sosc,temg,ceng-important,civl-important,comp-important,dbap-important,econ-important,eesm-important,elec-important,engg-important,entr-important,envr-important,evsm-important,gfin-important,isdn-important,isom-important,lifs-important,mafs-important,mark-important,mass-important,mgcs-important,phys-important,sbmt-important,sosc-important,temg-important,misc,misc-important,debug,bootlog'''.split(",")
+    
     for channel_name in channels_to_remove:
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if channel:
+            print("Removing channel",channel_name)
             await channel.delete()
+    channels_to_remove = []
     try:
         debug_write_to_file = False
 
@@ -120,7 +171,8 @@ async def on_ready():
         endpoint = requests.head(endpoint, allow_redirects=True).url
 
         print(endpoint)
-
+        if fake_endpoint:
+            endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
         url = endpoint
 
         page = requests.get(url)
@@ -134,6 +186,8 @@ async def on_ready():
         depts = depts.get_text("\n").split("\n")
         
         expected_channel_names = depts
+        expected_channel_names_internal = list(depts)
+        print("ecni",expected_channel_names_internal)
     except Exception as e:
         exception_text = traceback.format_exc()
         exception_text = censor_exception(exception_text)
@@ -152,9 +206,16 @@ async def on_ready():
     expected_channel_names.append("misc-important")
     expected_channel_names.append("debug")
     expected_channel_names.append("bootlog")
+    
+    
+    teststring = "able"
+    expected_channel_names.append(teststring)
+    depts_plus_dict[teststring] = "PG"
     #expected_channel_names.append("summary")
     
     print(",".join(expected_channel_names))
+    
+
     # Given channel name,  try create in approproate bot zones. 
     for category_ug_pg in ("UG","PG"):
         for need_important in (True, False):
@@ -177,46 +238,66 @@ async def on_ready():
                         if need_important:
                             if "-important" in expected_channel_name:
                                 channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
+                                category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
                                 category = discord.utils.get(guild.categories, name=category_name)
                                 if not channel:
                                     try:
                                         await guild.create_text_channel(expected_channel_name, category=category)
                                         print("Created Channel",expected_channel_name)
                                     except:
-                                        counter += 1
-                                        category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
-                                        category = discord.utils.get(guild.categories, name=category_name)
-                                    
-                                        if not category:
-                                            await guild.create_category(category_name)
-                                            print("Created category"+category_name)
-                                        else:
-                                            print("Fine, category exists"+category_name)
+                                        proceed = True
+                                        while proceed and counter < 10:
+                                            try:
+                                                counter += 1
+                                                category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
+                                                category = discord.utils.get(guild.categories, name=category_name)
                                             
-                                        await guild.create_text_channel(expected_channel_name, category=category)
-                                        print("Created Channel",expected_channel_name)
+                                                if not category:
+                                                    await guild.create_category(category_name)
+                                                    print("Created category"+category_name)
+                                                    category = discord.utils.get(guild.categories, name=category_name)
+                                                else:
+                                                    print("Fine, category exists"+category_name)
+                                                    
+                                                await guild.create_text_channel(expected_channel_name, category=category)
+                                                print("Created Channel",expected_channel_name)
+                                                proceed = False
+                                            except:
+                                                pass
                                 else:
                                     print("Fine, channel",expected_channel_name,"exists :)")
                         else:
                             channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
+                            category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
                             category = discord.utils.get(guild.categories, name=category_name)
                             if not channel:
                                 try:
                                     await guild.create_text_channel(expected_channel_name, category=category)
                                     print("Created Channel",expected_channel_name)
+                                    print(category_name)
+                                    print("########11111111111")
                                 except:
-                                    counter += 1
-                                    category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
-                                    category = discord.utils.get(guild.categories, name=category_name)
-                                
-                                    if not category:
-                                        await guild.create_category(category_name)
-                                        print("Created category"+category_name)
-                                    else:
-                                        print("Fine, category exists"+category_name)
+                                    proceed = True
+                                    while proceed and counter < 10:
+                                        try:
+                                            counter += 1
+                                            category_name = '{} Bot Zone No. {}{}'.format(category_ug_pg, counter, "-important" if need_important else "")
+                                            category = discord.utils.get(guild.categories, name=category_name)
                                         
-                                    await guild.create_text_channel(expected_channel_name, category=category)
-                                    print("Created Channel",expected_channel_name)
+                                            if not category:
+                                                await guild.create_category(category_name)
+                                                print("Created category"+category_name)
+                                                category = discord.utils.get(guild.categories, name=category_name)
+                                            else:
+                                                print("Fine, category exists"+category_name)
+                                                
+                                            await guild.create_text_channel(expected_channel_name, category=category)
+                                            print("Created Channel",expected_channel_name)
+                                            print(category_name)
+                                            print("########22222222222222")
+                                            proceed = False
+                                        except:
+                                            pass
                             else:
                                 print("Fine, channel",expected_channel_name,"exists :)")
                 except Exception as e:
@@ -254,35 +335,56 @@ async def myLoop():
 
             endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
 
-            endpoint = requests.head(endpoint, allow_redirects=True).url
-
+            endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
+            
+            assert endpoint.status_code == 200
+            
+            endpoint = endpoint.url
+            if fake_endpoint:
+                endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
             print(endpoint)
 
 
             url = endpoint
 
-            page = requests.get(url)
+            page = requests.get(url, timeout=10)
 
+            assert page.status_code == 200
+            
             soup = bs.BeautifulSoup(page.text,'lxml')
 
             depts = soup.select('.depts')[0]
+            
             depts_plus = [(dept.get_text(""),("PG" if dept.has_attr('class') and "pg" in dept['class'] else "UG")) for dept in depts]
             depts_plus_dict = dict(depts_plus)
+            
+            expected_channel_names_internal = depts_plus_dict.keys()
             depts = depts.get_text("\n").split("\n")
             
             print(depts)
             #os.system("cls")
 
             
-
-            for dept in (depts):
-
-                url = '{}subject/{}'.format(endpoint, dept)
+            
+            
+            
+            
+            urls = ['{}subject/{}'.format(endpoint, dept) for dept in depts]
+            
+            rs = (grequests.get(u) for u in urls)
+            rs2 = grequests.map(rs)
+            for i, dept in enumerate(depts):
                 
+                '''url = '{}subject/{}'.format(endpoint, dept)
+                print(url)
                 #url = "http://localhost:8000/{}".format(dept)
 
-                page = requests.get(url)
+                page = await client_requests.get(url, timeout=10)
+                #page = await do_request("GET",url)
                 
+                assert page.status_code == 200'''
+                
+                page = rs2[i]
                 assert page.status_code == 200
                 
                 if debug_write_to_file:
@@ -297,7 +399,14 @@ async def myLoop():
                 buffered_coursetable_row = []
                 
                 for course in courses:
+                    course_flags = []
                     coursetitle = course.select("h2")[0].decode_contents()
+                    courseinfo_bar = course.select(".courseinfo > div")
+                    for elem in courseinfo_bar[:-1]:
+                        #print(elem.get_text(separator=": "))
+                        course_flags.append(elem.get_text(separator=": "))
+                        
+                    course_flags.sort()
                     courseinfo = course.select(".courseattr.popup > .popupdetail > table")
                     try:
                         assert len(courseinfo) == 1
@@ -361,9 +470,9 @@ async def myLoop():
                         buffered_coursetable_row = []
                     coursecode = coursetitle.split("-")[0].strip().replace(" ","")
                     if course_table_length_mismatch == True:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
                     else:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts}
                     
                     
                     
@@ -398,7 +507,7 @@ async def myLoop():
                         # Adding / deleting from root element, fake things a little. 
                         behaviour = diff[0]
                         for course in diff[2]:
-                            os.system("cls")
+                            #os.system("cls")
                             #print(course)
                             
                             ccode, content = course
@@ -407,7 +516,7 @@ async def myLoop():
                             #print(notif.get(ccode[0:4], []))
                             notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
                         continue
-                    expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
+                    #expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
                     for expected_channel_name in expected_channel_names_internal:
                         print(diff, expected_channel_name)
                         if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
@@ -431,7 +540,8 @@ async def myLoop():
             
         try:
             with open("latest_state.json".format(time.time()),"w") as f:
-                json.dump(allcourses_dict, f)
+                if allcourses_dict:
+                    json.dump(allcourses_dict, f)
         except Exception as e:
             exception_text = traceback.format_exc()
             exception_text = censor_exception(exception_text)
@@ -453,14 +563,39 @@ async def myLoop():
                         channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
                         assert channel
                     except:
-                        channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
+                        # create channel
+                        counter = 1
+                        category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
+                        category = discord.utils.get(guild.categories, name=category_name)
+                        proceed = True
+                        while proceed and counter < 10:
+                            try:
+                                if not category:
+                                    await guild.create_category(category_name)
+                                category = discord.utils.get(guild.categories, name=category_name)
+                                await guild.create_text_channel((k.lower()+suffix), category=category)
+                                channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
+                                proceed=False
+                            except:
+                                # it is full
+                                counter += 1
+                                category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
+                                category = discord.utils.get(guild.categories, name=category_name)
+                                if not category:
+                                    await guild.create_category(category_name)
+                                category = discord.utils.get(guild.categories, name=category_name)
+                        if proceed:
+                            channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
                         if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
                             print("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v)))
                             todos.append(channel.send("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v))))
             print("Begin bang")
+            olddt = datetime.now().strftime("%H:%M:%S")
+            print(olddt)
             await asyncio.gather(*todos)
             print("End bang")
+            print(olddt, datetime.now().strftime("%H:%M:%S"))
         except Exception as e:
             exception_text = traceback.format_exc()
             exception_text = censor_exception(exception_text)
@@ -469,6 +604,7 @@ async def myLoop():
 
             channel = discord.utils.get(guild.text_channels, name="debug")
             await channel.send("admin pls help (make_messages):\n```\n{}\n```\n{}".format(exception_text, e))
+        await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="{}'s data".format(datetime.now().strftime("%H:%M:%S"))))
     except Exception as e:
         exception_text = traceback.format_exc()
         exception_text = censor_exception(exception_text)

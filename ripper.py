@@ -12,15 +12,23 @@ debug_write_to_file = False
 
 endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
 
-endpoint = requests.head(endpoint, allow_redirects=True).url
+endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
+
+assert endpoint.status_code == 200
+
+endpoint = endpoint.url
 
 print(endpoint)
 
 while True:
 
     url = endpoint
+    
+    url = "https://w5.ab.ust.hk/wcq/cgi-bin/2210/"
 
-    page = requests.get(url)
+    page = requests.get(url, timeout=10)
+
+    assert page.status_code == 200
 
     soup = bs.BeautifulSoup(page.text,'lxml')
 
@@ -38,11 +46,13 @@ while True:
 
     for dept in (depts):
 
-        url = '{}subject/{}'.format(endpoint, dept)
+        url = '{}subject/{}'.format("https://w5.ab.ust.hk/wcq/cgi-bin/2210/", dept)
         
         #url = "http://localhost:8000/{}".format(dept)
 
-        page = requests.get(url)
+        page = requests.get(url, timeout=10)
+        
+        assert page.status_code == 200
         
         if debug_write_to_file:
             with open(dept, "w", encoding="utf-8") as rf:
@@ -56,7 +66,17 @@ while True:
         buffered_coursetable_row = []
         
         for course in courses:
+            course_flags = []
             coursetitle = course.select("h2")[0].decode_contents()
+            
+            courseinfo_bar = course.select(".courseinfo > div")
+            
+            for elem in courseinfo_bar[:-1]:
+                print(elem.get_text(separator=": "))
+                course_flags.append(elem.get_text(separator=": "))
+                
+            course_flags.sort()
+            
             courseinfo = course.select(".courseattr.popup > .popupdetail > table")
             try:
                 assert len(courseinfo) == 1
@@ -120,9 +140,9 @@ while True:
                 buffered_coursetable_row = []
             coursecode = coursetitle.split("-")[0].strip().replace(" ","")
             if course_table_length_mismatch == True:
-                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
+                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
             else:
-                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "SECTIONS":coursetable_list_dicts}
+                allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts}
 
 
     os.system("cls")
