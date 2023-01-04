@@ -5,7 +5,7 @@ import bs4 as bs
 
 import functools
 
-import grequests
+# import grequests
 
 import requests
 import os
