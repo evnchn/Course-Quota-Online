@@ -2,6 +2,9 @@
 fake_endpoint = False
 import bs4 as bs
 
+
+import functools
+
 import grequests
 
 import requests
@@ -21,6 +24,26 @@ import discord
 from dotenv import load_dotenv
 
 from discord.ext import tasks
+
+
+
+
+
+
+
+
+
+
+
+
+import asyncio
+import concurrent.futures
+import requests
+
+
+
+
+
 '''
 import ssl
 
@@ -97,13 +120,14 @@ def preetify_diff(diff):
         return "Changed {} from: \n{}\nto\n{}".format(location, content[0], content[1])
     else:
         return str(diff)
-        
+endpoint_ensured = "" 
 def check_it_out(diff):
+    global endpoint_ensured
     event, location, content = diff
     if isinstance(location, list):
         location = ".".join(str(x) for x in location)
     cc = location.split(".")[0]
-    url = "https://w5.ab.ust.hk/wcq/cgi-bin/2220/subject/{}#{}".format(cc[0:4], cc)
+    url = "{}subject/{}#{}".format(endpoint_ensured, cc[0:4], cc)
     return url
     
 def is_important(diff):
@@ -206,6 +230,7 @@ async def on_ready():
     expected_channel_names.append("misc-important")
     expected_channel_names.append("debug")
     expected_channel_names.append("bootlog")
+    expected_channel_names.append("hkust-server-error")
     
     
     teststring = "able"
@@ -319,6 +344,7 @@ async def on_ready():
                 
 @tasks.loop(seconds = 60) # repeat after every 10 seconds
 async def myLoop():
+    global endpoint_ensured
     try:
 
         for guild in client.guilds:
@@ -328,6 +354,7 @@ async def myLoop():
             f'{client.user} is connected to the following guild:\n'
             f'{guild.name}(id: {guild.id})'
         )
+        
         allcourses_dict = {}
         try:
             
@@ -335,23 +362,93 @@ async def myLoop():
 
             endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
 
-            endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
+
+                    loop.run_in_executor(
+                        executor, 
+                        functools.partial(requests.head, url=target_url, allow_redirects=True, timeout= 10)
+                    )
+                    for target_url in [endpoint]
+                ]
+                rs2 = await asyncio.gather(*futures)
+
+            endpoint = rs2[0]
+
+            if endpoint.status_code != 200:
+                if endpoint.status_code == 500:
+                    channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
+                    await channel.send("Status code 500")
+                    return
+                else:
+                    raise Exception(endpoint.status_code)
+
+            # endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
             
             assert endpoint.status_code == 200
             
             endpoint = endpoint.url
+            endpoint_ensured = endpoint
+            
             if fake_endpoint:
                 endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
             print(endpoint)
 
 
             url = endpoint
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
 
+                    loop.run_in_executor(
+                        executor, 
+                        functools.partial(requests.get, url=target_url, timeout= 10)
+                    )
+                    for target_url in [url]
+                ]
+                rs2 = await asyncio.gather(*futures)
+                
+                
+                
+                
+                
+                
+            #channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
+            #await channel.send("Status code 500")
+            
+            
+            
+            
+            
+            
+            page = rs2[0]
             page = requests.get(url, timeout=10)
-
+            if page.status_code != 200:
+                if page.status_code == 500:
+                    channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
+                    await channel.send("Status code 500")
+                    return
+                else:
+                    raise Exception(page.status_code)
             assert page.status_code == 200
             
-            soup = bs.BeautifulSoup(page.text,'lxml')
+            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
+
+                    loop.run_in_executor(
+                        executor, 
+                        bs.BeautifulSoup, 
+                        ptxt, 
+                        'lxml'
+                    )
+                    for ptxt in [page.text]
+                ]
+                rs2_beautifulsoup = await asyncio.gather(*futures)
+            soup = rs2_beautifulsoup[0]
+            #soup = bs.BeautifulSoup(page.text,'lxml')
 
             depts = soup.select('.depts')[0]
             
@@ -371,8 +468,30 @@ async def myLoop():
             
             urls = ['{}subject/{}'.format(endpoint, dept) for dept in depts]
             
-            rs = (grequests.get(u) for u in urls)
-            rs2 = grequests.map(rs)
+            
+            
+            
+            #rs = (grequests.get(u, timeout=10) for u in urls)
+            #rs2 = grequests.map(rs)
+            print("getting all pages")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
+
+                    loop.run_in_executor(
+                        executor, 
+                        functools.partial(requests.get, url=target_url, timeout= 10)
+                    )
+                    for target_url in urls
+                ]
+                rs2 = await asyncio.gather(*futures)
+            print("got all pages")
+            '''loop.run_in_executor(
+                executor, 
+                requests.get, 
+                url
+            )'''
+            
             for i, dept in enumerate(depts):
                 
                 '''url = '{}subject/{}'.format(endpoint, dept)
@@ -385,13 +504,38 @@ async def myLoop():
                 assert page.status_code == 200'''
                 
                 page = rs2[i]
+                
+                if page.status_code != 200:
+                    if page.status_code == 500:
+                        channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
+                        await channel.send("Status code 500")
+                        return
+                    else:
+                        raise Exception(page.status_code)
+                
                 assert page.status_code == 200
                 
                 if debug_write_to_file:
                     with open(dept, "w", encoding="utf-8") as rf:
                         rf.write(page.text)
+                        
+                print("Parsing",dept)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                    loop = asyncio.get_event_loop()
+                    futures = [
 
-                soup = bs.BeautifulSoup(page.text,'lxml')
+                        loop.run_in_executor(
+                            executor, 
+                            bs.BeautifulSoup, 
+                            ptxt, 
+                            'lxml'
+                        )
+                        for ptxt in [page.text]
+                    ]
+                    rs2_beautifulsoup = await asyncio.gather(*futures)
+                print("Parsed",dept)
+                soup = rs2_beautifulsoup[0]
+                #soup = bs.BeautifulSoup(page.text,'lxml')
 
                 courses = soup.select('#classes > .course')
                 
@@ -514,7 +658,10 @@ async def myLoop():
                             #print(ccode[0:4])
                             #print(notif)
                             #print(notif.get(ccode[0:4], []))
-                            notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
+                            if len(ccode[0:4])==4:
+                                notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
+                            else:
+                                notif["MISC"] = notif.get("MISC", []) + [(behaviour,ccode,str(content)[0:1000])]
                         continue
                     #expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
                     for expected_channel_name in expected_channel_names_internal:
@@ -539,8 +686,8 @@ async def myLoop():
             await channel.send("admin pls help (sending):\n```\n{}\n```\n{}".format(exception_text, e))
             
         try:
-            with open("latest_state.json".format(time.time()),"w") as f:
-                if allcourses_dict:
+            if allcourses_dict:
+                with open("latest_state.json".format(time.time()),"w") as f:
                     json.dump(allcourses_dict, f)
         except Exception as e:
             exception_text = traceback.format_exc()
@@ -564,32 +711,37 @@ async def myLoop():
                         assert channel
                     except:
                         # create channel
-                        counter = 1
-                        category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
-                        category = discord.utils.get(guild.categories, name=category_name)
-                        proceed = True
-                        while proceed and counter < 10:
-                            try:
-                                if not category:
-                                    await guild.create_category(category_name)
-                                category = discord.utils.get(guild.categories, name=category_name)
-                                await guild.create_text_channel((k.lower()+suffix), category=category)
-                                channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
-                                proceed=False
-                            except:
-                                # it is full
-                                counter += 1
-                                category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
-                                category = discord.utils.get(guild.categories, name=category_name)
-                                if not category:
-                                    await guild.create_category(category_name)
-                                category = discord.utils.get(guild.categories, name=category_name)
-                        if proceed:
+                        
+                        try:
+                            counter = 1
+                            depts_plus_dict[k]
+                            category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
+                            category = discord.utils.get(guild.categories, name=category_name)
+                            proceed = True
+                            while proceed and counter < 10:
+                                try:
+                                    if not category:
+                                        await guild.create_category(category_name)
+                                    category = discord.utils.get(guild.categories, name=category_name)
+                                    await guild.create_text_channel((k.lower()+suffix), category=category)
+                                    channel = discord.utils.get(guild.text_channels, name=(k.lower()+suffix))
+                                    proceed=False
+                                except:
+                                    # it is full
+                                    counter += 1
+                                    category_name = '{} Bot Zone No. {}{}'.format(depts_plus_dict[k], counter, "-important" if importancy else "")
+                                    category = discord.utils.get(guild.categories, name=category_name)
+                                    if not category:
+                                        await guild.create_category(category_name)
+                                    category = discord.utils.get(guild.categories, name=category_name)
+                            if proceed:
+                                channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
+                        except:
                             channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
                         if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                            print("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v)))
-                            todos.append(channel.send("```\n{}\n```Check it out on: \n{}".format(preetify_diff(sub_v),check_it_out(sub_v))))
+                            print("```{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v)))
+                            todos.append(channel.send("```{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))))
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
