@@ -740,8 +740,8 @@ async def myLoop():
                             channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
                         if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                            print("```{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v)))
-                            todos.append(channel.send("```{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))))
+                            print("```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v)))
+                            todos.append(channel.send("```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))))
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
