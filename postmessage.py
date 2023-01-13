@@ -244,9 +244,9 @@ async def on_ready():
     
     
     
-    teststring = "able"
+    '''teststring = "able"
     expected_channel_names.append(teststring)
-    depts_plus_dict[teststring] = "PG"
+    depts_plus_dict[teststring] = "PG"'''
     #expected_channel_names.append("summary")
     
     print(",".join(expected_channel_names))
@@ -348,7 +348,27 @@ async def on_ready():
     
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     
-    await channel.send('Booting up. ')
+    await channel.send('Waking up. ')
+    
+    
+    for category in guild.categories:
+        
+        if "Bot Zone" in category.name:
+            print("Sorting",category.name)
+            channel_names_unsorted = list(channel.name for channel in category.channels)
+            channel_names = sorted(channel_names_unsorted)
+            if not channel_names_unsorted == channel_names:
+                await channel.send('Sorting {}, please wait...'.format(category.name))
+                print("Needs sorting",category.name)
+                for channel_name in channel_names:
+                    print(channel_name)
+                    await discord.utils.get(guild.channels, name=channel_name).edit(position=channel_names.index(channel_name))
+            else:
+                print("Doesn't need sorting",category.name)
+    
+    await channel.send("Alright. Let's fight!")
+    
+    
     myLoop.start()
 
 
@@ -659,6 +679,10 @@ async def myLoop():
             
                 for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
                     if not diff[1]:
+                        with open("logfile.txt", "a") as lf:
+                            lf.writelines(["###MISC-IMPORTANT###", str(diff), datetime.now().strftime("%H:%M:%S"), "------"])
+                            channel = discord.utils.get(guild.text_channels, name="debug")
+                            await channel.send("check logfile.txt to debug strange misc-important NOW!")
                         # Adding / deleting from root element, fake things a little. 
                         behaviour = diff[0]
                         for course in diff[2]:
@@ -760,8 +784,15 @@ async def myLoop():
                             channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
                         if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                            print("```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v)))
-                            todos.append(channel.send("```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))))
+                            sending_string = "```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))
+                            print(sending_string)
+                            if len(sending_string) < 1900:
+                                todos.append(channel.send(sending_string))
+                            else:
+                                with open("logfile.txt", "a") as lf:
+                                    lf.writelines(["###TOO-LONG-STRING###", sending_string, datetime.now().strftime("%H:%M:%S"), "------"])
+                                    channel = discord.utils.get(guild.text_channels, name="debug")
+                                    await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
