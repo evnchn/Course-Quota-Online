@@ -37,9 +37,9 @@ from discord.ext import tasks
 
 
 
+import pathlib
 
-
-
+latest_state_json_file = str(pathlib.Path(__file__).parent.absolute() / "latest_state.json")
 
 
 
@@ -670,7 +670,7 @@ async def myLoop():
         notif = {}
         try:
             
-            with open("latest_state.json".format(time.time()),"r") as f:
+            with open(latest_state_json_file,"r") as f:
                 allcourses_dict_old = json.load(f)
 
             #pyperclip.copy(output)
@@ -722,9 +722,9 @@ async def myLoop():
             
         try:
             if allcourses_dict:
-                with open("latest_state.json".format(time.time()),"w") as f:
+                with open(latest_state_json_file,"w") as f:
                     json.dump(allcourses_dict, f)
-                json_hash = sha256sum("latest_state.json")
+                json_hash = sha256sum(latest_state_json_file)
                 print(json_hash)
                 channel = discord.utils.get(guild.text_channels, name="hashes-{}".format(bot_identity))
                 messages = [message async for message in channel.history(limit=1)]
