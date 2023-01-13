@@ -1,7 +1,16 @@
 # bot.py
 fake_endpoint = False
 import bs4 as bs
+import hashlib
 
+def sha256sum(filename):
+    h  = hashlib.sha256()
+    b  = bytearray(128*1024)
+    mv = memoryview(b)
+    with open(filename, 'rb', buffering=0) as f:
+        while n := f.readinto(mv):
+            h.update(mv[:n])
+    return h.hexdigest()
 
 import functools
 
@@ -68,7 +77,7 @@ client_requests = http3.AsyncClient()
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-
+bot_identity = "kirito"
 client = discord.Client(intents=discord.Intents.default())
 
 
@@ -231,6 +240,8 @@ async def on_ready():
     expected_channel_names.append("debug")
     expected_channel_names.append("bootlog")
     expected_channel_names.append("hkust-server-error")
+    expected_channel_names.append("hashes-{}".format(bot_identity))
+    
     
     
     teststring = "able"
@@ -491,8 +502,8 @@ async def myLoop():
                 requests.get, 
                 url
             )'''
-            
-            for i, dept in enumerate(depts):
+            print(depts)
+            for i, dept in enumerate(tqdm(depts)):
                 
                 '''url = '{}subject/{}'.format(endpoint, dept)
                 print(url)
@@ -519,7 +530,7 @@ async def myLoop():
                     with open(dept, "w", encoding="utf-8") as rf:
                         rf.write(page.text)
                         
-                print("Parsing",dept)
+                #print("Parsing",dept)
                 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
                     loop = asyncio.get_event_loop()
                     futures = [
@@ -533,7 +544,7 @@ async def myLoop():
                         for ptxt in [page.text]
                     ]
                     rs2_beautifulsoup = await asyncio.gather(*futures)
-                print("Parsed",dept)
+                #print("Parsed",dept)
                 soup = rs2_beautifulsoup[0]
                 #soup = bs.BeautifulSoup(page.text,'lxml')
 
@@ -689,6 +700,15 @@ async def myLoop():
             if allcourses_dict:
                 with open("latest_state.json".format(time.time()),"w") as f:
                     json.dump(allcourses_dict, f)
+                json_hash = sha256sum("latest_state.json")
+                print(json_hash)
+                channel = discord.utils.get(guild.text_channels, name="hashes-{}".format(bot_identity))
+                messages = [message async for message in channel.history(limit=1)]
+                if not messages:
+                    await channel.send(json_hash)
+                else:
+                    await messages[0].edit(content=json_hash)
+                #await channel.send(json_hash)
         except Exception as e:
             exception_text = traceback.format_exc()
             exception_text = censor_exception(exception_text)
