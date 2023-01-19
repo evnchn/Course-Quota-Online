@@ -198,7 +198,7 @@ def testing(arr, debug=False):
 
 
 
-
+from urllib.parse import urljoin
 
 
 # bot.py
@@ -622,10 +622,11 @@ async def on_ready():
     
     myLoop.start()
 
-
-                
-@tasks.loop(seconds = 60) # repeat after every 10 seconds
+# last_valid_endpoint is endpoint_ensured
+last_valid_page = None
+@tasks.loop(seconds = 6) # repeat after every 10 seconds
 async def myLoop():
+    global last_valid_page
     global endpoint_ensured
     try:
 
@@ -641,72 +642,120 @@ async def myLoop():
         try:
             
             debug_write_to_file = False
+            if last_valid_page:
+                # use newer endpoint determination and course list determination. 
+                # iterate through course list until get a fresh page
+                # then go on
+                print("---REVO - FLASHBACK---")
+                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                    loop = asyncio.get_event_loop()
+                    futures = [
 
-            endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
+                        loop.run_in_executor(
+                            executor, 
+                            bs.BeautifulSoup, 
+                            ptxt, 
+                            'lxml'
+                        )
+                        for ptxt in [last_valid_page.text]
+                    ]
+                    rs2_beautifulsoup = await asyncio.gather(*futures)
+                soup = rs2_beautifulsoup[0]
+                endpoint = soup.select(".termselect > a")[0]['href']
+                endpoint = urljoin(last_valid_page.url, endpoint)
+                endpoint_ensured = endpoint
+                print(endpoint)
+                
+                depts = soup.select('.depts')[0]
+                depts = depts.get_text("\n").split("\n")
+                
+                print(depts)
+                
+                for dept in depts:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                        loop = asyncio.get_event_loop()
+                        futures = [
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-                loop = asyncio.get_event_loop()
-                futures = [
+                            loop.run_in_executor(
+                                executor, 
+                                functools.partial(requests.get, url=target_url, timeout= 10)
+                            )
+                            for target_url in ["{}subject/{}".format(endpoint, dept)]
+                        ]
+                        rs2 = await asyncio.gather(*futures)
+                    if rs2[0].status_code == 200:
+                        break
+                
+                # rs2[0] should be what it wants
+                
+                    
+                
+            else:    
+                endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/'
 
-                    loop.run_in_executor(
-                        executor, 
-                        functools.partial(requests.head, url=target_url, allow_redirects=True, timeout= 10)
-                    )
-                    for target_url in [endpoint]
-                ]
-                rs2 = await asyncio.gather(*futures)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                    loop = asyncio.get_event_loop()
+                    futures = [
 
-            endpoint = rs2[0]
+                        loop.run_in_executor(
+                            executor, 
+                            functools.partial(requests.head, url=target_url, allow_redirects=True, timeout= 10)
+                        )
+                        for target_url in [endpoint]
+                    ]
+                    rs2 = await asyncio.gather(*futures)
 
-            if endpoint.status_code != 200:
-                if endpoint.status_code == 500:
-                    channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
-                    await channel.send("Status code 500")
-                    return
-                else:
-                    raise Exception(endpoint.status_code)
+                endpoint = rs2[0]
 
-            # endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
-            
-            assert endpoint.status_code == 200
-            
-            endpoint = endpoint.url
-            endpoint_ensured = endpoint
-            
-            if fake_endpoint:
-                endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
-            print(endpoint)
+                if endpoint.status_code != 200:
+                    if endpoint.status_code in (500, 404) and endpoint_ensured:
+                        channel = discord.utils.get(guild.text_channels, name="hkust-ignored-error")
+                        await channel.send("Status code {}, ignored".format(endpoint.status_code))
+                        endpoint = endpoint_ensured
+                    else:
+                        raise Exception(endpoint.status_code)
+
+                # endpoint = requests.head(endpoint, allow_redirects=True, timeout=10)
+                
+                # assert endpoint.status_code == 200
+                
+                endpoint = endpoint.url
+                endpoint_ensured = endpoint
+                
+                if fake_endpoint:
+                    endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
+                print(endpoint)
 
 
-            url = endpoint
-            
-            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-                loop = asyncio.get_event_loop()
-                futures = [
+                url = endpoint
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                    loop = asyncio.get_event_loop()
+                    futures = [
 
-                    loop.run_in_executor(
-                        executor, 
-                        functools.partial(requests.get, url=target_url, timeout= 10)
-                    )
-                    for target_url in [url]
-                ]
-                rs2 = await asyncio.gather(*futures)
+                        loop.run_in_executor(
+                            executor, 
+                            functools.partial(requests.get, url=target_url, timeout= 10)
+                        )
+                        for target_url in [url]
+                    ]
+                    rs2 = await asyncio.gather(*futures)
+                    
+                    
+                    
+                    
+                    
+                    
+                #channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
+                #await channel.send("Status code 500")
                 
                 
                 
                 
-                
-                
-            #channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
-            #await channel.send("Status code 500")
-            
-            
-            
-            
             
             
             page = rs2[0]
-            page = requests.get(url, timeout=10)
+            # page = requests.get(url, timeout=10)
             if page.status_code != 200:
                 if page.status_code == 500:
                     channel = discord.utils.get(guild.text_channels, name="hkust-server-error")
@@ -774,6 +823,12 @@ async def myLoop():
                 url
             )'''
             print(depts)
+            
+            
+            for page in rs2:
+                if page.status_code == 200:
+                    last_valid_page = page
+            
             for i, dept in enumerate(tqdm(depts)):
                 
                 '''url = '{}subject/{}'.format(endpoint, dept)
