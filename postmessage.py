@@ -1,3 +1,206 @@
+
+'''
+def GetCeilIndex(arr, T, l, r, key):
+ 
+    while (r - l > 1):
+     
+        m = l + (r - l)//2
+        if (arr[T[m]] >= key):
+            r = m
+        else:
+            l = m
+ 
+    return r
+  
+def LongestIncreasingSubsequence(arr, n):
+ 
+    # Add boundary case,
+    # when array n is zero
+    # Depend on smart pointers
+     
+    # Initialized with 0
+    tailIndices =[0 for i in range(n + 1)] 
+ 
+    # Initialized with -1
+    prevIndices =[-1 for i in range(n + 1)] 
+     
+    # it will always point
+    # to empty location
+    len_internal = 1
+    for i in range(1, n):
+     
+        if (arr[i] < arr[tailIndices[0]]):
+         
+            # new smallest value
+            tailIndices[0] = i
+         
+        elif (arr[i] > arr[tailIndices[len_internal-1]]):
+         
+            # arr[i] wants to extend
+            # largest subsequence
+            prevIndices[i] = tailIndices[len_internal-1]
+            tailIndices[len_internal] = i
+            len_internal += 1
+         
+        else:
+         
+            # arr[i] wants to be a
+            # potential condidate of
+            # future subsequence
+            # It will replace ceil
+            # value in tailIndices
+            pos = GetCeilIndex(arr, tailIndices, -1,
+                                   len_internal-1, arr[i])
+  
+            prevIndices[i] = tailIndices[pos-1]
+            tailIndices[pos] = i
+         
+    #print("LIS of given input")
+    i = tailIndices[len_internal-1]
+    constructarr = []
+    while(i >= 0):
+        constructarr.append(arr[i])
+        #print(arr[i], " ", end ="")
+        i = prevIndices[i]
+    #print()
+    
+    constructarr.reverse()
+    
+    #print(constructarr)
+  
+    return constructarr # len_internal
+    
+
+def moveelem_discord(arr, elem, ind):
+    if ind == len(arr):
+        arr.remove(elem)
+        arr.append(elem)
+        return arr
+    if ind == 1:
+        arr.remove(elem)
+        return [elem] + arr
+    
+    
+    arr.remove(elem)
+    arr.insert(ind-1, elem)
+    return arr
+
+def testing(arr, debug=False):
+    moves = []
+    # driver code
+    #arr = [ 2, 5, 3, 7, 11, 8, 10, 13, 6 ]
+    arr_orig = list(arr)
+    arr = list(arr)
+    assert len(list(set(arr))) == len(arr)
+
+    n = len(arr)
+      
+    LIS_output = LongestIncreasingSubsequence(arr, n)
+
+    sorted_arr = list(sorted(arr))
+
+    arr_with_flags = [(x, x in LIS_output) for x in arr]
+
+
+    elem_not_in = list(elem for elem in arr if elem not in LIS_output)
+
+    elem_not_in.sort()
+
+
+    
+
+    for elem in elem_not_in:
+    
+        arr_with_flags.remove(tuple((elem, False)))
+        #print(arr_with_flags)
+        if elem < min(x[0] for x in arr_with_flags if x[1]):
+            arr_with_flags = [tuple((elem, 1))] + arr_with_flags
+            moves.append((elem, 1))
+            arr = moveelem_discord(arr, elem, 1)
+            continue
+            
+        elif elem > max(x[0] for x in arr_with_flags if x[1]):
+            arr_with_flags = arr_with_flags + [tuple((elem, 1))]
+            moves.append((elem, len(arr)))
+            arr = moveelem_discord(arr, elem, len(arr))
+            continue
+        else:
+            ind = 0
+            while True:
+                if arr_with_flags[ind][1] and arr_with_flags[ind][0] > elem:
+                    break
+                ind += 1
+                
+            target_i = ind
+                    
+           
+        new_index = target_i
+        #print(new_index)
+        if debug:
+            print("move Elem[{}] to {}".format(elem, new_index))
+        
+        
+        
+        if target_i == -1:
+            arr_with_flags.append(tuple((elem, 1)))
+        else:
+            arr_with_flags.insert(new_index, tuple((elem, 1)))
+        
+        
+        moves.append((elem, target_i + 1))
+        
+        arr = moveelem_discord(arr, elem, target_i + 1)
+            
+    # arr = [x[0] for x in arr_with_flags]
+    if not arr == sorted_arr:
+        print(arr_orig)
+        print(arr)
+        print(arr_with_flags)
+        print(sorted_arr)
+        print("BAD!!!!!!!!!!!!!!!!!!!!!")
+        return False
+    return moves
+
+###### HIGHLY EXPERIMENTAL CODE
+
+
+
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # bot.py
 fake_endpoint = False
 import bs4 as bs
@@ -126,6 +329,11 @@ def preetify_diff(diff):
     elif event == "remove":
         return "Removed from {}: \n{}".format(location, content)
     elif event == "change":
+        if str(content[0]).isdigit() and str(content[1]).isdigit():
+            try:
+                return "Changed {} \n{} -> {} ({})".format(location, content[0], content[1], "{}{}".format("+" if int(content[1]) > int(content[0]) else "", int(content[1]) - int(content[0])))
+            except:
+                return "Changed {} from: \n{}\nto\n{}".format(location, content[0], content[1])
         return "Changed {} from: \n{}\nto\n{}".format(location, content[0], content[1])
     else:
         return str(diff)
@@ -177,7 +385,7 @@ async def on_ready():
         print("Created category"+category_name)
         category = discord.utils.get(guild.categories, name=category_name)
     else:
-        print("Fine, category exists"+category_name)
+        print("Fine, category exists "+category_name)
     
     for important_preboot_channels in ("debug", "bootlog"):
         channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
@@ -244,6 +452,7 @@ async def on_ready():
     
     
     
+    
     '''teststring = "able"
     expected_channel_names.append(teststring)
     depts_plus_dict[teststring] = "PG"'''
@@ -265,12 +474,12 @@ async def on_ready():
                 await guild.create_category(category_name)
                 print("Created category"+category_name)
             else:
-                print("Fine, category exists"+category_name)
+                print("Fine, category exists "+category_name)
         
             for expected_channel_name in expected_channel_names:
                 try:   
                     #print(depts_plus_dict[expected_channel_name], category_ug_pg)
-                    if depts_plus_dict[expected_channel_name.upper()[0:4]] == category_ug_pg:
+                    if len(expected_channel_name.split("-")[0]) == 4 and expected_channel_name.split("-")[0] != "misc" and depts_plus_dict[expected_channel_name.upper()[0:4]] == category_ug_pg:
                         if need_important:
                             if "-important" in expected_channel_name:
                                 channel = discord.utils.get(guild.text_channels, name=expected_channel_name)
@@ -293,7 +502,7 @@ async def on_ready():
                                                     print("Created category"+category_name)
                                                     category = discord.utils.get(guild.categories, name=category_name)
                                                 else:
-                                                    print("Fine, category exists"+category_name)
+                                                    print("Fine, category exists "+category_name)
                                                     
                                                 await guild.create_text_channel(expected_channel_name, category=category)
                                                 print("Created Channel",expected_channel_name)
@@ -310,8 +519,6 @@ async def on_ready():
                                 try:
                                     await guild.create_text_channel(expected_channel_name, category=category)
                                     print("Created Channel",expected_channel_name)
-                                    print(category_name)
-                                    print("########11111111111")
                                 except:
                                     proceed = True
                                     while proceed and counter < 10:
@@ -325,12 +532,10 @@ async def on_ready():
                                                 print("Created category"+category_name)
                                                 category = discord.utils.get(guild.categories, name=category_name)
                                             else:
-                                                print("Fine, category exists"+category_name)
+                                                print("Fine, category exists "+category_name)
                                                 
                                             await guild.create_text_channel(expected_channel_name, category=category)
                                             print("Created Channel",expected_channel_name)
-                                            print(category_name)
-                                            print("########22222222222222")
                                             proceed = False
                                         except:
                                             pass
@@ -350,22 +555,68 @@ async def on_ready():
     
     await channel.send('Waking up. ')
     
-    
+    ### THE FOLLOWING DOESN'T WORK BECAUSE API NOT PRESENT
+    '''for category in guild.categories:
+        
+        if "Bot Zone" in category.name:
+            print("Sorting",category.name)
+            channel_names_unsorted = list(channel.name for channel in category.channels)
+            pos_list = (list(channel.position for channel in category.channels))
+            print(pos_list)
+            themin = min(list(channel.position for channel in category.channels))
+            channel_names = sorted(channel_names_unsorted)
+            
+            
+            
+            
+            
+            
+            
+            
+            if not channel_names_unsorted == channel_names:
+                channel = discord.utils.get(guild.text_channels, name="bootlog")
+                await channel.send('Sorting {}, please wait...'.format(category.name))
+                channel_names_unsorted_ordinal = [channel_names.index(x) for x in channel_names_unsorted]
+                print("---ACTION---")
+                print(channel_names_unsorted_ordinal)
+                moves = testing(channel_names_unsorted_ordinal)
+                print(moves)
+                print("------------")
+                for move in moves:
+                    m1, m2 = move
+                    print(channel_names[m1], pos_list[int(m2-1+themin)])
+                    print(discord.utils.get(category.channels, name=channel_names[m1]).position)
+                    await discord.utils.get(category.channels, name=channel_names[m1]).edit(position=pos_list[int(m2-1+themin)])
+                    
+                    print(discord.utils.get(category.channels, name=channel_names[m1]).position)
+                pos_list = (list(channel.position for channel in category.channels))
+                print(pos_list)
+                channel_names_unsorted = list(channel.name for channel in category.channels)
+                channel_names = sorted(channel_names_unsorted)
+                print(channel_names_unsorted)
+                channel_names_unsorted_ordinal = [channel_names.index(x) for x in channel_names_unsorted]
+                print(channel_names_unsorted_ordinal)
+
+            else:
+                print("Doesn't need sorting",category.name)'''
     for category in guild.categories:
         
         if "Bot Zone" in category.name:
             print("Sorting",category.name)
             channel_names_unsorted = list(channel.name for channel in category.channels)
             channel_names = sorted(channel_names_unsorted)
+        
             if not channel_names_unsorted == channel_names:
-                await channel.send('Sorting {}, please wait...'.format(category.name))
+                
+                channel = discord.utils.get(guild.text_channels, name="bootlog")
+                await channel.send('Sorting {}, \nplease wait...'.format(category.name))
+                
                 print("Needs sorting",category.name)
                 for channel_name in channel_names:
                     print(channel_name)
-                    await discord.utils.get(guild.channels, name=channel_name).edit(position=channel_names.index(channel_name))
-            else:
-                print("Doesn't need sorting",category.name)
-    
+                    await discord.utils.get(category.channels, name=channel_name).edit(position=channel_names.index(channel_name))
+                    print(channel_name, channel_names.index(channel_name))
+    channel = discord.utils.get(guild.text_channels, name="bootlog")
     await channel.send("Alright. Let's fight!")
     
     
@@ -644,6 +895,13 @@ async def myLoop():
                         coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
                         buffered_coursetable_row = []
                     coursecode = coursetitle.split("-")[0].strip().replace(" ","")
+                    
+                    
+                    if not coursecode:
+                        coursecode = "{}0871".format(depts)
+                    
+                    
+                    
                     if course_table_length_mismatch == True:
                         allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
                     else:
@@ -679,10 +937,10 @@ async def myLoop():
             
                 for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
                     if not diff[1]:
-                        with open("logfile.txt", "a") as lf:
+                        '''with open("logfile.txt", "a") as lf:
                             lf.writelines(["###MISC-IMPORTANT###", str(diff), datetime.now().strftime("%H:%M:%S"), "------"])
                             channel = discord.utils.get(guild.text_channels, name="debug")
-                            await channel.send("check logfile.txt to debug strange misc-important NOW!")
+                            await channel.send("check logfile.txt to debug strange misc-important NOW!")'''
                         # Adding / deleting from root element, fake things a little. 
                         behaviour = diff[0]
                         for course in diff[2]:
@@ -821,6 +1079,43 @@ async def myLoop():
             exception_text = censor_exception(exception_text)
             print(exception_text)
             print(e)
+            
+            
+    try:
+        needping = False
+        for category in guild.categories:
+            if "Bot Zone" in category.name:
+                print("Sorting",category.name)
+                channel_names_unsorted = list(channel.name for channel in category.channels)
+                channel_names = sorted(channel_names_unsorted)
+            
+                if not channel_names_unsorted == channel_names:
+                    needping = True
+                    channel = discord.utils.get(guild.text_channels, name="bootlog")
+                    await channel.send('Sorting mid-battle {}, \nplease wait...'.format(category.name))
+                    
+                    print("Needs sorting",category.name)
+                    for channel_name in channel_names:
+                        print(channel_name)
+                        await discord.utils.get(category.channels, name=channel_name).edit(position=channel_names.index(channel_name))
+                        print(channel_name, channel_names.index(channel_name))
+        if needping:
+            channel = discord.utils.get(guild.text_channels, name="bootlog")
+            await channel.send("Alright. Let's fight!")
+    except Exception as e:
+        exception_text = traceback.format_exc()
+        exception_text = censor_exception(exception_text)
+        print(exception_text)
+        print(e)
+        try:
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (post-sort):\n```\n{}\n```\n{}".format(exception_text, e))
+        except:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+        
     
 
     
