@@ -624,7 +624,7 @@ async def on_ready():
 
 # last_valid_endpoint is endpoint_ensured
 last_valid_page = None
-@tasks.loop(seconds = 15) # repeat after every 10 seconds
+@tasks.loop(seconds = 30) # repeat after every 10 seconds
 async def myLoop():
     global last_valid_page
     global endpoint_ensured
