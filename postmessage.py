@@ -345,7 +345,14 @@ def check_it_out(diff):
         location = ".".join(str(x) for x in location)
     cc = location.split(".")[0]
     url = "{}subject/{}#{}".format(endpoint_ensured, cc[0:4], cc)
-    return url
+    
+    fourdigits = endpoint_ensured.split("/")[-2]
+    
+    # http://evn.asuscomm.com:2280/2230COMP1021
+    
+    url2 = "http://evn.asuscomm.com:2280/{}{}".format(fourdigits, cc)
+    
+    return "{}\n{}".format(url, url2)
     
 def is_important(diff):
     event, location, content = diff
