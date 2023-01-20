@@ -829,7 +829,7 @@ async def myLoop():
                 if page.status_code == 200:
                     last_valid_page = page
             
-            for i, dept in enumerate(tqdm(dept)):
+            for i, dept in enumerate(tqdm(depts)):
                 
                 '''url = '{}subject/{}'.format(endpoint, dept)
                 print(url)
@@ -953,7 +953,7 @@ async def myLoop():
                     
                     
                     if not coursecode:
-                        coursecode = "{}0871".format(depts)
+                        coursecode = "{}0871".format(dept)
                     
                     
                     
