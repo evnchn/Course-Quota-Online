@@ -829,7 +829,7 @@ async def myLoop():
                 if page.status_code == 200:
                     last_valid_page = page
             
-            for i, dept in enumerate(tqdm(depts)):
+            for i, dept in enumerate(tqdm(dept)):
                 
                 '''url = '{}subject/{}'.format(endpoint, dept)
                 print(url)
