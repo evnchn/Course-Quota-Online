@@ -828,9 +828,22 @@ async def myLoop():
             for page in rs2:
                 if page.status_code == 200:
                     last_valid_page = page
+            try:
+                os.mkdir(str(pathlib.Path(__file__).parent.absolute() / "filestore"))
+            except:
+                pass
+                
+            fourdigits = endpoint_ensured.split("/")[-2]
             
+            print(fourdigits)
+            
+            try:
+                os.mkdir(str(pathlib.Path(__file__).parent.absolute() / "filestore/{}".format(fourdigits)))
+            except:
+                pass
             for i, dept in enumerate(tqdm(depts)):
                 
+
                 '''url = '{}subject/{}'.format(endpoint, dept)
                 print(url)
                 #url = "http://localhost:8000/{}".format(dept)
@@ -841,7 +854,12 @@ async def myLoop():
                 assert page.status_code == 200'''
                 
                 page = rs2[i]
-                
+
+                try:
+                    with open(str(pathlib.Path(__file__).parent.absolute() / "filestore/{}/{}.html".format(fourdigits, dept)), "w", encoding="utf-8") as savefile:
+                        savefile.write(page.text)
+                except:
+                    pass
                 if page.status_code != 200:
                     if page.status_code == 500:
                         channel = discord.utils.get(guild.text_channels, name="hkust-server-error")

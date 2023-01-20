@@ -1,0 +1,15 @@
+html, body {
+    height: 100%;
+    padding: 0;
+}
+body {
+    display: flex;
+    align-content: center;
+    flex-wrap: wrap;
+}
+div#classes {
+    width: 100%;
+}
+.course {
+    margin: auto;
+}

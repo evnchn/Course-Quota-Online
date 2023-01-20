@@ -1,0 +1,159 @@
+*{margin:0; padding:0; border:0}
+body{padding:0 0 50px 12px}
+body, div, th, td{font-family:Arial; font-size:12px}
+table{border:1px solid #9AB; border-spacing:0px; /*border-collapse:collapse*/}
+td, th{padding:4px}
+th{background-color:#DEF}
+td{vertical-align:top}
+tr.newsect td{border-top:1px solid #b4d2db}
+tr.sectodd td{background-color:#e1eef2; color:#1b4973}
+tr.secteven td{background-color:#FFF}
+h2{font-size:15px; margin:15px 0 5px 0}
+.nav{ min-height:100px;  width:1024px;  position:fixed;  top:0;  left:0;  padding:0px 0px 10px 0;  background-color:#F5FAFC;  border-bottom:1px solid #999;  z-index:10}
+.topbar a {
+    color: inherit;
+    text-decoration: none;
+}
+.topbar{ width: 100%; background-color:#214063;  border-bottom:1px solid #0f233a;  margin-bottom:5px;  height:34px}
+.topbar li{ float:left;  list-style-type:none;  display:inline-block;  font-size:12px;  border-right:1px solid #3f6086;  padding:0;  margin:0;  vertical-align:bottom}
+.topbar li.logo{ padding:9px 15px 4px;  height:21px;  color:#FFF;  font-size:15px;  font-weight:bold;  text-shadow:0 1px 0 #000}
+.topbar .term{ z-index: 2; padding:11px 10px 4px;  height:19px;  font-weight:bold;  text-decoration:none;  color:#e0e0e0;  position:relative;  width:115px}
+.termselect{ display:none;  width:137px;  position:absolute;  top:34px;  left:-2px;  background-color:#3f6086;  border-left:1px solid #0f233a;  border-right:1px solid #0f233a;  border-bottom:1px solid #0f233a}
+.extlink i, .acklink i, .crseattrsearchlink i, .term i{ display:inline-block;  height:11px;  width:11px;  background:url('/wcq/images/icons.png') -70px 0px;  margin-left:2px}
+.termselect a{ display:block;  padding:6px 10px;  font-weight:bold;  text-decoration:none;  color:#e0e0e0}
+.termselect a:hover { background-color:#557497;  color:#FFF}
+.topbar .term:hover, .topbar .acklink:hover, .topbar .extlink:hover, .topbar .crseattrsearchlink:hover{ cursor:pointer;  background-color:#3f6086}
+.topbar .term:hover .termselect, .term:focus .termselect{ display:block}
+.topbar .extlink{ z-index: 1; background-color: #214063; padding:11px 10px 4px;  height:19px;  text-decoration:none;  color:#e0e0e0;  position:relative;  width:97px}
+.topbar .acklink{ z-index: 1; background-color: #214063; padding:11px 10px 4px;  height:19px;  text-decoration:none;  color:#e0e0e0;  position:relative;  width:82px ; border-right:0px}
+.topbar .crseattrsearchlink{ z-index: 1; background-color: #214063; padding:11px 10px 4px;  height:19px;  text-decoration:none;  color:#e0e0e0;  position:relative;  width:160px}
+.extlinkselect{ display:none;  position:absolute;  left:-140px;  top:34px;  width:300px;  background-color:#3f6086;  border-left:1px solid #0f233a;  border-right:1px solid #0f233a;  border-bottom:1px solid #0f233a}
+.crseattrsearch{ display:none;  position:absolute;  left:-1px;  top:34px;  width:200px;  background-color:#3f6086;  border-left:1px solid #0f233a;  border-right:1px solid #0f233a;  border-bottom:1px solid #0f233a}
+.ackselect{ display:none;  position:absolute;  left:-208px;  top:34px;  width:310px;  background-color:#3f6086;  border-left:1px solid #0f233a;  border-right:1px solid #0f233a;  border-bottom:1px solid #0f233a}
+.extlink:hover .extlinkselect, .extlink:focus .extlinkselect, .acklink:hover .ackselect, .acklink:focus .ackselect, .crseattrsearchlink:hover .crseattrsearch, .crseattrsearchlink:focus .crseattrsearch{ display:block}
+.extlinkselect div{ padding:6px 10px}
+.ackselect div{ padding:14px 20px}
+.crseattrsearch li { width:200px}
+.extlinkselect a{ display:block;  font-weight:bold;  text-decoration:none;  color:#e0e0e0;  padding:6px 10px}
+.ackselect a{ display:block;  font-weight:bold;  text-decoration:none;  color:#e0e0e0;  padding:6px 10px}
+.crseattrsearch a{ display:block;  font-weight:bold;  text-decoration:none;  color:#e0e0e0;  padding:6px 2px 6px 10px}
+.extlinkselect a:hover, .ackselect a:hover, .crseattrsearch a:hover{ color:#FFF;  background-color:#557497}
+.submenu{ display:none;  position:absolute;  background-color:#3f6086;  border-left:1px solid #0f233a;  border-right:1px solid #0f233a;  border-top:1px solid #0f233a;  border-bottom:1px solid #0f233a;}
+.crseattrsearch li .submenu{ top:-1px;  left:201px;  width:200px;  list-style-type:none;}
+.crseattrsearch li .submenu li{ width:200px;}
+.crseattrsearch li:hover .submenu{ display:block;}
+.topbar li.search{ padding:0;  height:34px}
+.search input{ padding:5px 8px;  padding:8px 8px 2px 8px\9;  height:20px;  border:0;  background-color:#214063;  border:2px solid #214063;  font-size:12px;  color:#e0e0e0;  font-style:italic;  width:120px}
+.search input:focus{ color:#FFF;  background-color:#41658d;  border:2px solid #6AC;  font-style:normal}
+.depts{ clear:both; max-width: 1000px; width:auto; padding:3px 5px 0 12px; min-height:30px}
+.depts a{ display:inline-block; font-size:14px; padding:1px 3px; font-weight:bold; margin-right:2px}
+.depts a.ug{ color:#0d64ae}
+.depts a.pg{ color:#6ca6cb}
+.course{position:relative; width:1012px}
+.matching{ display:inline-block;  color:#E00;  margin-right:8px}
+.crseattrword{ color:#0D64AE; font-weight:bold; }
+.courseattr{ display:inline-block}
+.courseinfo{ margin-top:2px;  float:right}
+strong{color:#F00}
+tr.cancelled td strong{ color:inherit;  font-weight:normal}
+.quota, .classno{/*position:relative;*/ cursor:pointer}
+.quota span, .classno span{text-decoration:underline}
+
+.quota .quotadetail, .classno .classdetail{display:none; position:absolute; top:-20px; left:35px; border:1px solid #999; background-color:#FFF; padding:8px; text-align:left; z-index:100; color:#000}
+.quota .quotadetail{ width:130px}
+.classno .classdetail{ width:260px}
+.quota:hover .quotadetail, .classno:hover .classdetail{display:block; text-decoration:none}
+tr.cancelled td{color:#888 !important; text-decoration:line-through}
+.popup{ position:relative;  cursor:pointer}
+.popup .popupdetail{ display:none;  position:absolute;  top:14px;  right:0px;  border:1px solid #999;  background-color:#FFF;  padding:8px;  text-align:left;  z-index:100}
+.popup:hover .popupdetail{ display:block}
+.popup .popupdetail th{ color:#999;  white-space:nowrap;  text-align:center;  padding:4px 6px;  vertical-align:top}
+.popup .popupdetail td{ color:#333}
+.attrc, .attrca, .attrpu, .classnotes{ width:14px;  height:14px;  margin-right:6px;  display:inline-block;  vertical-align:bottom}
+.attrword{ display:inline-block; margin-right:6px;}
+.attrc .popupdetail, .attrca .popupdetail, .attrpu .popupdetail, .attrword .popupdetail{ width:170px}
+.classnotes .popupdetail{ width:270px;  color:#333}
+.attrc{ background:url('/wcq/images/icons.png') 0 -14px}
+.attrca{ background:url('/wcq/images/icons.png') -14px -14px}
+.attrpu{ background:url('/wcq/images/icons.png') -28px -14px}
+.classnotes{ background:url('/wcq/images/icons.png') -56px 0px}
+.consent{ width:36px;  height:14px;  margin-right:6px;  display:inline-block;  vertical-align:bottom;  background:url('/wcq/images/icons.png') -42px -14px}
+.consent .popupdetail{ width:160px;  color:#333}
+.ui-autocomplete{ position:fixed !important;  max-height:400px;  /*overflow:auto*/}
+table.sections a{ color:#0651a4}
+.ui-widget{ font-size:1em !important}
+.clearfix:after{ visibility:hidden;  display:block;  font-size:0;  content:"";  clear:both;  height:0}
+.clearfix{display:inline-table}
+* html .clearfix{height:1%}
+
+@media screen and (max-device-width:860px) {
+    .search input {width: 110px !important}
+    .topbar .extlink {width: 100px !important}
+    .topbar li.logo {font-size: 13px; padding: 10px 10px 4px;}
+    
+    body { padding-left: 0px; !important; }
+    div#classes { margin-left: 12px; margin-top: 0px; }
+    /*div.nav { position: static; }*/
+    div.depts a {font-size: 12px !important;} 
+    .extlinkselect a { padding:2px 6px}
+    .crseattrsearch a { padding:2px 6px}
+}
+
+@media screen and (max-width:860px) {
+body { padding-left: 0px; !important; }
+    div#classes { margin-left: 12px; margin-top: 0px; }
+    /* div.nav { position: static; } */
+}
+
+@media print {
+	.nav {position:absolute;}
+	.topbar .acklink {/*display:none;*/ width:75px;}
+}
+
+/* Override bootstrap css */
+body {
+	line-height: initial;
+}
+th {
+	text-align:center;
+}
+.h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
+	font-family: inherit;
+	font-weight: bold;
+	line-height: initial;
+	color: inherit;
+}
+img {
+	vertical-align: inherit;
+}
+* {
+	-webkit-box-sizing: inherit;
+	-moz-box-sizing: inherit;
+	box-sizing: inherit;
+}
+
+@media print {
+	a[href]:after {
+		content: none
+	}
+}
+
+/* extend bootstrap modal css */
+.modal {
+  text-align: center;
+  padding: 0!important;
+}
+
+.modal:before {
+  content: '';
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+  margin-right: -4px;
+}
+
+.modal-dialog {
+  display: inline-block;
+  text-align: left;
+  vertical-align: middle;
+}
