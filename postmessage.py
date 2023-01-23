@@ -1,4 +1,4 @@
-developer_max_worker_constant = 4 # 100
+developer_max_worker_constant = 100 # 100
 
 from base64 import b64encode, b64decode
 
@@ -257,7 +257,7 @@ my_hash = sha256sum(my_location)
 
 print(my_hash)
 
-input()
+# input()
 
 
 
