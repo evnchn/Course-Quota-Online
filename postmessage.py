@@ -314,11 +314,11 @@ async def do_request(method, url):
 
 
 def censor_exception(exception_text):
-    splitted = exception_text.split("\n")
-    splitted2 = splitted[1].split('"')
-    splitted2[1] = "cardinal.py"
-    splitted[1] = '"'.join(splitted2)
-    return "\n".join(splitted)
+    base_directory = os.path.expanduser("~")
+    base_directory_split = base_directory.split("\\")
+    base_directory_split[-1] = "Heathcliff"
+    new_base_directory = "\\".join(base_directory_split)
+    return exception_text.replace(__file__, "cardinal.py").replace(base_directory, new_base_directory)
 
 def filter_phantom_change(diff):
     event, location, content = diff
