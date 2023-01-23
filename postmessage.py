@@ -1,3 +1,6 @@
+developer_max_worker_constant = 4 # 100
+
+from base64 import b64encode, b64decode
 
 '''
 def GetCeilIndex(arr, T, l, r, key):
@@ -213,7 +216,9 @@ def sha256sum(filename):
     with open(filename, 'rb', buffering=0) as f:
         while n := f.readinto(mv):
             h.update(mv[:n])
-    return h.hexdigest()
+    # https://stackoverflow.com/a/63595341
+    
+    return b64encode(bytes.fromhex(h.hexdigest())).decode()
 
 import functools
 
@@ -244,7 +249,15 @@ import pathlib
 
 latest_state_json_file = str(pathlib.Path(__file__).parent.absolute() / "latest_state.json")
 
+internal_metadata_json_file = str(pathlib.Path(__file__).parent.absolute() / "internal_metadata.json")
 
+my_location = str(pathlib.Path(__file__).absolute())
+
+my_hash = sha256sum(my_location)
+
+print(my_hash)
+
+input()
 
 
 
@@ -358,7 +371,7 @@ def is_important(diff):
     event, location, content = diff
     if isinstance(location, list):
         location = ".".join(str(x) for x in location)
-    unimportant = ("Enrol", "Avail", "Wait", "COURSE_INFO.DESCRIPTION")
+    unimportant = ("Wait", )
     for unimportant_strings in unimportant:
         if unimportant_strings in location:
             return False
@@ -394,7 +407,7 @@ async def on_ready():
     else:
         print("Fine, category exists "+category_name)
     
-    for important_preboot_channels in ("debug", "bootlog"):
+    for important_preboot_channels in ("debug", "bootlog", "updates"):
         channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
         if not channel:
             try:
@@ -452,7 +465,11 @@ async def on_ready():
     # only lowercase letters in discord channels ... 
     expected_channel_names.append("misc")
     expected_channel_names.append("misc-important")
+    expected_channel_names.append("updates")
     expected_channel_names.append("debug")
+    
+    # expected_channel_names.append("tocreate")
+    
     expected_channel_names.append("bootlog")
     expected_channel_names.append("hkust-server-error")
     expected_channel_names.append("hashes-{}".format(bot_identity))
@@ -486,6 +503,8 @@ async def on_ready():
             for expected_channel_name in expected_channel_names:
                 try:   
                     #print(depts_plus_dict[expected_channel_name], category_ug_pg)
+                    if len(expected_channel_name) != 4:
+                        raise Exception("Handle by misc")
                     if len(expected_channel_name.split("-")[0]) == 4 and expected_channel_name.split("-")[0] != "misc" and depts_plus_dict[expected_channel_name.upper()[0:4]] == category_ug_pg:
                         if need_important:
                             if "-important" in expected_channel_name:
@@ -557,6 +576,8 @@ async def on_ready():
                     if not channel:
                         await guild.create_text_channel(expected_channel_name, category=category)
                         print("Created Channel",expected_channel_name)
+                    else:
+                        print("Fine, channel",expected_channel_name,"exists :)")
     
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     
@@ -812,7 +833,7 @@ async def myLoop():
             #rs = (grequests.get(u, timeout=10) for u in urls)
             #rs2 = grequests.map(rs)
             print("getting all pages")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=developer_max_worker_constant) as executor:
                 loop = asyncio.get_event_loop()
                 futures = [
 
@@ -936,31 +957,58 @@ async def myLoop():
                         course_table_length_mismatch = True
                     coursetable = coursetable[0]
                     coursetable_list_dicts = []
+                    quotadetail_info = None
                     keys = coursetable.select('tr')[0].select("th")
                     keys = [k.text.replace(" & ", "_N_") for k in keys]
                     for row in coursetable.select('tr')[1:]:
                         fields = row.select("td")
                         
                         if buffered_coursetable_row and len(fields) == 3: # is an extension
-                            buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
+                            '''buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
                             buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
                             buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
                             buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
-                            buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))
+                            buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))'''
                             #print(buffered_coursetable_row, buffered_coursetable_row_2)
-                            buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]
+                            '''buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]'''
+                            buffered_coursetable_row[1].append(fields[0].get_text(separator="_"))
+                            buffered_coursetable_row[2].append(fields[1].get_text(separator="_"))
+                            buffered_coursetable_row[3].append(list(fields[2].stripped_strings))
                             continue # we are done
                         else:
                             if buffered_coursetable_row:
-                                coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
+                                ### Now get ready to intervene!
+                                row_dict_target = dict(zip(keys,buffered_coursetable_row))
+                                qea_dict = {}
+                                if quotadetail_info is not None:
+                                    for line in quotadetail_info:
+                                        student_group, qea_slashed = line.split(": ")
+                                        qea_split = tuple(int(i) for i in qea_slashed.split("/"))
+                                        row_dict_target["Quota"] -= qea_split[0]
+                                        row_dict_target["Enrol"] -= qea_split[1]
+                                        row_dict_target["Avail"] -= qea_split[2]
+                                        qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
+                                
+                                qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
+                                
+                                row_dict_target["QEA"] = qea_dict
+                                
+                                coursetable_list_dicts.append(row_dict_target)
                                 buffered_coursetable_row = []
+                                quotadetail_info = None
                             if len(buffered_coursetable_row) < len(fields):
                                 buffered_coursetable_row = [None for i in range(len(fields))]
                             for i, field in enumerate(fields):
                                 if field.select("span") and i == 4:
-                                    buffered_coursetable_row[i] = field.select("span")[0].text
-                                elif i in (0,1,2,3,4,5,6,7):
-                                    buffered_coursetable_row[i] = field.get_text(separator="_")
+                                    buffered_coursetable_row[i] = int(field.select("span")[0].text)
+                                    # Working column-wise, unwise to process quotadetail here
+                                    quotadetail_info = list(field.select(".quotadetail")[0].stripped_strings)[1:]
+                                elif i in (3, ):
+                                    buffered_coursetable_row[i] = [list(field.stripped_strings)]
+                                elif i in (1,2):
+                                    buffered_coursetable_row[i] = [field.get_text(separator="_")]
+                                elif i in (4,5,6):
+                                    buffered_coursetable_row[i] = int(field.get_text(separator="_"))
                                 elif i in (8,):
                                     mkdict = {}
                                     if field.select(".popup.consent"):
@@ -968,12 +1016,32 @@ async def myLoop():
                                     else:
                                         mkdict["consent"] = False
                                     if field.select(".popup.classnotes"):
-                                        mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
+                                        # mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
+                                        mkdict["info"] = list(field.select(".popup.classnotes")[0].stripped_strings)
                                     buffered_coursetable_row[i] = mkdict
+                                else: # i in (0,1,2,3,4,5,6,7), or any other
+                                    buffered_coursetable_row[i] = field.get_text(separator="_")
                         #coursetable_list_dicts.append(dict(zip(keys,field2)))
                     if buffered_coursetable_row:
-                        coursetable_list_dicts.append(dict(zip(keys,buffered_coursetable_row)))
+                        ### Now get ready to intervene!
+                        row_dict_target = dict(zip(keys,buffered_coursetable_row))
+                        qea_dict = {}
+                        if quotadetail_info is not None:
+                            for line in quotadetail_info:
+                                student_group, qea_slashed = line.split(": ")
+                                qea_split = tuple(int(i) for i in qea_slashed.split("/"))
+                                row_dict_target["Quota"] -= qea_split[0]
+                                row_dict_target["Enrol"] -= qea_split[1]
+                                row_dict_target["Avail"] -= qea_split[2]
+                                qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
+                        
+                        qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
+                        
+                        row_dict_target["QEA"] = qea_dict
+                        
+                        coursetable_list_dicts.append(row_dict_target)
                         buffered_coursetable_row = []
+                        quotadetail_info = None
                     coursecode = coursetitle.split("-")[0].strip().replace(" ","")
                     
                     
@@ -981,11 +1049,16 @@ async def myLoop():
                         coursecode = "{}0871".format(dept)
                     
                     
+                    sections_keyfield = list(coursetable_list_dicts[0].keys())[0]
+                    
+                    
+                    
+                    coursetable_list_dicts_2 = {x.pop(sections_keyfield).replace(" ",""):x for x in coursetable_list_dicts}
                     
                     if course_table_length_mismatch == True:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
                     else:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECTIONS":coursetable_list_dicts}
+                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield}
                     
                     
                     
@@ -1004,8 +1077,10 @@ async def myLoop():
         
         
         
-        
         notif = {}
+
+        
+        
         try:
             
             with open(latest_state_json_file,"r") as f:
@@ -1045,7 +1120,7 @@ async def myLoop():
                     else: # no break
                         notif["MISC"] = notif.get("MISC", []) + [diff]
 
-                print(notif)
+                #print(notif)
             else:
                 raise Exception("Either array is nullish. ")
 
@@ -1079,6 +1154,32 @@ async def myLoop():
 
             channel = discord.utils.get(guild.text_channels, name="debug")
             await channel.send("admin pls help (savedict):\n```\n{}\n```\n{}".format(exception_text, e))
+            
+        metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}
+        try:
+            with open(internal_metadata_json_file, "r") as f:
+                metadata_old = json.load(f)
+            
+            
+            if metadata and metadata_old:
+                for diff in list(dictdiffer.diff(metadata_old, metadata)):
+                    ignore_updates = True
+                    _, area, change = diff
+                    channel = discord.utils.get(guild.text_channels, name="updates")
+                    await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(len(notif), "" if len(notif) == 1 else "s", "is" if len(notif) == 1 else "are") if notif else "It does not matter as there are no notifications to be posted. "))
+                    del notif
+                    notif = {}
+            else:
+                raise Exception("Either metadata is nullish. ")
+        
+        except Exception as e:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (showmeta):\n```\n{}\n```\n{}".format(exception_text, e))
         
         #time.sleep(300)
         try:
@@ -1134,6 +1235,8 @@ async def myLoop():
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
+            
+
             await asyncio.gather(*todos)
             print("End bang")
             print(olddt, datetime.now().strftime("%H:%M:%S"))
@@ -1159,6 +1262,22 @@ async def myLoop():
             exception_text = censor_exception(exception_text)
             print(exception_text)
             print(e)
+            
+            
+            
+            
+    try:
+        if metadata:
+            with open(internal_metadata_json_file,"w") as f:
+                json.dump(metadata, f)
+    except Exception as e:
+        exception_text = traceback.format_exc()
+        exception_text = censor_exception(exception_text)
+        print(exception_text)
+        print(e)
+        channel = discord.utils.get(guild.text_channels, name="debug")
+        await channel.send("admin pls help (savemeta):\n```\n{}\n```\n{}".format(exception_text, e))
+            
             
             
     try:

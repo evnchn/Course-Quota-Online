@@ -1,3 +1,5 @@
 .env
 latest_state.json
 filestore
+logfile.txt
+internal_metadata.json
