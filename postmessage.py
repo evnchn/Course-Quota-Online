@@ -1,5 +1,7 @@
-developer_max_worker_constant = 100 # 100
+developer_max_worker_constant = 4 # 100 is obsolete. Will cause excessive CPU spikes
 
+developer_use_new_differ = True # False is the old version. Rollback if all else fails! 
+import newdiffer
 from base64 import b64encode, b64decode
 
 '''
@@ -335,19 +337,25 @@ def preetify_diff(diff):
     if isinstance(location, list):
         location = ".".join(str(x) for x in location)
         
-    
+    if ".SECT." in location:
+        location = location.replace(".SECT.","-",1)
         
     if event == "add":
-        return "Added from {}: \n{}".format(location, content)
+        return "\u001b[1;36m[ADD]\u001b[0;37m {}: \n{}".format(location, content)
     elif event == "remove":
-        return "Removed from {}: \n{}".format(location, content)
+        return "\u001b[1;35m[DEL]\u001b[0;37m {}: \n{}".format(location, content)
     elif event == "change":
         if str(content[0]).isdigit() and str(content[1]).isdigit():
             try:
-                return "Changed {} \n{} -> {} ({})".format(location, content[0], content[1], "{}{}".format("+" if int(content[1]) > int(content[0]) else "", int(content[1]) - int(content[0])))
+                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{} -> {} ({})".format(location, content[0], content[1], "{}{}".format("+" if int(content[1]) > int(content[0]) else "", int(content[1]) - int(content[0])))
             except:
-                return "Changed {} from: \n{}\nto\n{}".format(location, content[0], content[1])
-        return "Changed {} from: \n{}\nto\n{}".format(location, content[0], content[1])
+                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
+        elif set((str(content[0]), str(content[1]))) == set(("True", "False")):
+            try:
+                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{} -> {}".format(location, content[0], content[1])
+            except:
+                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
+        return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
     else:
         return str(diff)
 endpoint_ensured = "" 
@@ -365,7 +373,7 @@ def check_it_out(diff):
     
     url2 = "http://evn.asuscomm.com:2280/{}{}".format(fourdigits, cc)
     
-    return "{}\n{}".format(url, url2)
+    return "{}\n{}".format(url2, url)
     
 def is_important(diff):
     event, location, content = diff
@@ -391,6 +399,8 @@ async def on_ready():
     for guild in client.guilds:
         if guild.name == GUILD:
             break
+            
+    print(guild.features)
 
     print(
         f'{client.user} is connected to the following guild:\n'
@@ -411,8 +421,12 @@ async def on_ready():
         channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
         if not channel:
             try:
-                await guild.create_text_channel(important_preboot_channels, category=category)
-            except:
+                channel = await guild.create_text_channel(important_preboot_channels, category=category)
+                await channel.edit(type=discord.ChannelType.news)
+                print(channel.type)
+            except Exception as e:
+                print(e)
+                print(traceback.format_exc())
                 await guild.create_text_channel(important_preboot_channels)
                 
                 
@@ -644,6 +658,21 @@ async def on_ready():
                     print(channel_name)
                     await discord.utils.get(category.channels, name=channel_name).edit(position=channel_names.index(channel_name))
                     print(channel_name, channel_names.index(channel_name))
+    channel = discord.utils.get(guild.text_channels, name="bootlog")
+    await channel.send("Alright. Let's fight!")
+    
+    for category in guild.categories:
+        if "Bot Zone" in category.name:
+            count = 0
+            for channel in category.channels:
+                if channel.type != discord.ChannelType.news:
+                    count += 1
+            if count:
+                channel = discord.utils.get(guild.text_channels, name="bootlog")
+                await channel.send('Converting {} channel{} to announcements\nin {}, please wait...'.format(count, "" if count == 1 else "s", category.name))
+                for channel in category.channels:
+                    if channel.type != discord.ChannelType.news:
+                        await channel.edit(type=discord.ChannelType.news)
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     await channel.send("Alright. Let's fight!")
     
@@ -1089,8 +1118,14 @@ async def myLoop():
             #pyperclip.copy(output)
             
             if allcourses_dict_old and allcourses_dict:
-            
-                for diff in list(dictdiffer.diff(allcourses_dict_old, allcourses_dict)):         
+                if developer_use_new_differ:
+                    the_diffs = newdiffer.diff2(allcourses_dict_old, allcourses_dict)
+                else:
+                    the_diffs = list(dictdiffer.diff(allcourses_dict_old, allcourses_dict))
+                for diff in the_diffs: 
+                    if len(diff[1])==8 and diff[1][4:8].isdigit(): ## just a course 
+                        diff = list(diff)
+                        diff[2] = "<AN ENTIRE COURSE>"
                     if not diff[1]:
                         '''with open("logfile.txt", "a") as lf:
                             lf.writelines(["###MISC-IMPORTANT###", str(diff), datetime.now().strftime("%H:%M:%S"), "------"])
@@ -1107,7 +1142,7 @@ async def myLoop():
                             #print(notif)
                             #print(notif.get(ccode[0:4], []))
                             if len(ccode[0:4])==4:
-                                notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE>")]
+                                notif[ccode[0:4]] = notif.get(ccode[0:4], []) + [(behaviour,ccode,"<AN ENTIRE COURSE (LEGACY)>")]
                             else:
                                 notif["MISC"] = notif.get("MISC", []) + [(behaviour,ccode,str(content)[0:1000])]
                         continue
@@ -1166,7 +1201,7 @@ async def myLoop():
                     ignore_updates = True
                     _, area, change = diff
                     channel = discord.utils.get(guild.text_channels, name="updates")
-                    await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(len(notif), "" if len(notif) == 1 else "s", "is" if len(notif) == 1 else "are") if notif else "It does not matter as there are no notifications to be posted. "))
+                    await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(len(notif), "" if len(notif) == 1 else "s", "is" if len(notif) == 1 else "are") if notif else "Doesn't matter, no notifications anyways. "))
                     del notif
                     notif = {}
             else:
@@ -1223,7 +1258,8 @@ async def myLoop():
                             channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
                         if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                            sending_string = "```\n{}\n```Check it out on: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))
+                            sending_string = "```ansi\n{}\n```See: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))
+                            ## Added ANSI formatting here
                             print(sending_string)
                             if len(sending_string) < 1900:
                                 todos.append(channel.send(sending_string))
@@ -1265,7 +1301,7 @@ async def myLoop():
             
             
             
-            
+    metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}     
     try:
         if metadata:
             with open(internal_metadata_json_file,"w") as f:
