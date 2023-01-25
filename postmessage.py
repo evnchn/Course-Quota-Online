@@ -1365,7 +1365,7 @@ async def myLoop():
 
             channel = discord.utils.get(guild.text_channels, name="debug")
             await channel.send("admin pls help (make_messages):\n```\n{}\n```\n{}".format(exception_text, e))
-        await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="{}'s data".format(datetime.now().strftime("%H:%M:%S"))))
+        await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="{}'s data".format(datetime.now().strftime("%H:%M:%S"))))
     except Exception as e:
         exception_text = traceback.format_exc()
         exception_text = censor_exception(exception_text)

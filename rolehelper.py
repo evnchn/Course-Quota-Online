@@ -41,7 +41,9 @@ async def remove(ctx, subject: discord.Option(str), alert: discord.Option(str, c
         print(traceback.format_exc())
         await ctx.respond(f"Failed to find role {role}")
     
-    
-    
+@bot.event
+async def on_ready():
+    game = discord.CustomActivity("/add or /remove")
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/add or /remove"))
 
 bot.run(TOKEN_2)
