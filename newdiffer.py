@@ -1,5 +1,7 @@
 from deepdiff import DeepDiff
 
+import quotabeautify
+
 import dictdiffer
 
 import json
@@ -65,8 +67,10 @@ def access_dict_by_root_notation(dict_in, root_notation, parent=False):
         root_notation = root_notation.rsplit("[",1)[0]
     return eval(root_notation, {"root":dict_in})
     
-def root_notation_to_dot_notation(root_notation):
+def root_notation_to_dot_notation(root_notation, parent=False):
     ### THIS IS QUITE UNSAFE AND INEFFICIENT. 
+    if parent:
+        root_notation = root_notation.rsplit("[",1)[0]
     return ".".join(str(ast.literal_eval(x)) for x in root_notation[:-1].replace("root[","").split("]["))
 
 '''
@@ -74,14 +78,15 @@ old_dict = {1:[1,2,3]}
 new_dict = {1:[1,2,"AAAAAA"]}
 '''
 
-def diff2(old_dict, new_dict, debug=False):
+def diff2(old_dict, new_dict, debug=False, CQO_special_mode=True):
 
-    deepdiff_results = DeepDiff(old_dict, new_dict)
+    deepdiff_results = DeepDiff(old_dict, new_dict, cache_size=5000) #5000 in the docs see https://zepworks.com/deepdiff/current/optimizations.html#cache-size-label
 
     if debug:
         print(deepdiff_results)
 
     forged_dictdiffer_result = []
+    forged_dictdiffer_result_dedup = []
     for deepdiff_result in deepdiff_results.items():
         result_type, result_contents = deepdiff_result
 
@@ -113,9 +118,22 @@ def diff2(old_dict, new_dict, debug=False):
                 forged_dictdiffer_result.append(("remove", root_notation_to_dot_notation(result_path), result_value))
                 
         
-        elif result_type in ("values_changed", "type_changes"): ## May have to separate later
+        elif result_type in ("values_changed", "type_changes"): ## May have to separate later      
             for result_path, result_value in result_contents.items():
-                forged_dictdiffer_result.append(("change", root_notation_to_dot_notation(result_path), (result_value["old_value"], result_value["new_value"])))
+                location = root_notation_to_dot_notation(result_path)
+                old_val, new_val = result_value["old_value"], result_value["new_value"]
+                if CQO_special_mode == True:
+                    is_QEA_subitem = False
+                    all_unimportant_suffix = (".Enrol", ".Avail", ".Quota")
+                    for unimportant_strings in all_unimportant_suffix:
+                        if location.endswith(unimportant_strings):
+                            # result_path = result_path.rsplit("[",1)[0] #parent
+                            location = root_notation_to_dot_notation(result_path, parent=True)
+                            old_val = quotabeautify.beautify(access_dict_by_root_notation(old_dict, result_path, parent=True))
+                            new_val = quotabeautify.beautify(access_dict_by_root_notation(new_dict, result_path, parent=True))
+                            break
+                #forged_dictdiffer_result.append(("change", root_notation_to_dot_notation(result_path), (result_value["old_value"], result_value["new_value"])))
+                forged_dictdiffer_result_dedup.append(("change", location, (old_val, new_val)))
         
         
         elif result_type == "unprocessed":
@@ -136,9 +154,12 @@ def diff2(old_dict, new_dict, debug=False):
                 
     if debug:
         print(list(dictdiffer.diff(old_dict, new_dict)))
+        
+        
         print(forged_dictdiffer_result)
-            
-    return forged_dictdiffer_result
+    
+    forged_dictdiffer_result_dedup = list(set(forged_dictdiffer_result_dedup))
+    return forged_dictdiffer_result + forged_dictdiffer_result_dedup
     
     
 if __name__ == "__main__":

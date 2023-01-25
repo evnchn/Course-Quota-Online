@@ -1,7 +1,13 @@
 developer_max_worker_constant = 4 # 100 is obsolete. Will cause excessive CPU spikes
 
 developer_use_new_differ = True # False is the old version. Rollback if all else fails! 
+
+developer_disable_hashchecks = True
+
 import newdiffer
+
+import quotabeautify
+
 from base64 import b64encode, b64decode
 
 '''
@@ -311,7 +317,10 @@ async def do_request(method, url):
 
 
 
-
+def fix_list_locations(location):
+    if isinstance(location, list) or isinstance(location, tuple):
+        location = ".".join(str(x) for x in location)
+    return location
 
 
 
@@ -324,9 +333,7 @@ def censor_exception(exception_text):
 
 def filter_phantom_change(diff):
     event, location, content = diff
-    if isinstance(location, list):
-        location = ".".join(str(x) for x in location)
-        
+    location = fix_list_locations(location)
     if event == "change":
         if isinstance(content[0], str) and isinstance(content[1], str) and content[0].replace("\r","").replace("\n","") == content[1].replace("\r","").replace("\n",""):
             return False
@@ -334,36 +341,45 @@ def filter_phantom_change(diff):
 
 def preetify_diff(diff):
     event, location, content = diff
-    if isinstance(location, list):
-        location = ".".join(str(x) for x in location)
+    location = fix_list_locations(location)
         
     if ".SECT." in location:
         location = location.replace(".SECT.","-",1)
-        
+    formatmode_QEA = False
+    try:
+        c1, c2 = content
+        if quotabeautify.is_dict_QEA(c1) and quotabeautify.is_dict_QEA(c2):
+            c1, c2 = quotabeautify.beautify(c1), quotabeautify.beautify(c2)
+            
+        if quotabeautify.is_string_QEA(c1) and quotabeautify.is_string_QEA(c2):
+            formatmode_QEA = True
+    except:
+        if quotabeautify.is_dict_QEA(content):
+            content = quotabeautify.beautify(content)
+    
     if event == "add":
         return "\u001b[1;36m[ADD]\u001b[0;37m {}: \n{}".format(location, content)
     elif event == "remove":
         return "\u001b[1;35m[DEL]\u001b[0;37m {}: \n{}".format(location, content)
     elif event == "change":
+        if formatmode_QEA:
+            return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}".format(location, quotabeautify.diff_between_QEA(quotabeautify.uglify(content[0]), quotabeautify.uglify(content[1])))
         if str(content[0]).isdigit() and str(content[1]).isdigit():
             try:
                 return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{} -> {} ({})".format(location, content[0], content[1], "{}{}".format("+" if int(content[1]) > int(content[0]) else "", int(content[1]) - int(content[0])))
             except:
                 return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
         elif set((str(content[0]), str(content[1]))) == set(("True", "False")):
-            try:
-                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{} -> {}".format(location, content[0], content[1])
-            except:
-                return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
-        return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
+            return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{} -> {}".format(location, content[0], content[1])
+        else:
+            return "\u001b[1;33m[CHG]\u001b[0;37m {}: \n{}\nto\n{}".format(location, content[0], content[1])
     else:
         return str(diff)
 endpoint_ensured = "" 
 def check_it_out(diff):
     global endpoint_ensured
     event, location, content = diff
-    if isinstance(location, list):
-        location = ".".join(str(x) for x in location)
+    location = fix_list_locations(location)
     cc = location.split(".")[0]
     url = "{}subject/{}#{}".format(endpoint_ensured, cc[0:4], cc)
     
@@ -377,15 +393,41 @@ def check_it_out(diff):
     
 def is_important(diff):
     event, location, content = diff
-    if isinstance(location, list):
-        location = ".".join(str(x) for x in location)
+    location = fix_list_locations(location)
     all_unimportant_suffix = (".Wait", ".Enrol", ".Avail")
     for unimportant_strings in all_unimportant_suffix:
         if location.endswith(unimportant_strings): #unimportant_strings in location:
-            return False
-    return True
-
-
+            return (False,)
+    if event == "change" and ".QEA." in location:
+        c1, c2 = content
+        c1 = quotabeautify.uglify(c1)
+        c2 = quotabeautify.uglify(c2)
+        if c1["Quota"] == c2["Quota"]: # Quota same
+            return (False,) #Q same, EA not same, False
+        elif c1["Enrol"] == c2["Enrol"] and c1["Avail"] == c2["Avail"]: # EA same
+            return (True,) #EA same, Q not same, True
+        else:
+            return (True,False) # both can
+            
+    return (True,)
+guild_ensured = None
+def get_mention_roles(diff):
+    #<@&165511591545143296>
+    event, location, content = diff
+    location = fix_list_locations(location)
+    
+    if ".SECT." in location:
+        location = location.replace(".SECT.","-",1)
+        
+        
+    if not "." in location:
+        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+    elif event == "change" and ".QEA." in location and True in is_important(diff):
+        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+    elif ".Instructor" in location:
+        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-traps".format(location[0:4])).id)
+    else:
+        return ""
 
 channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
 channels_to_remove += [(i+"-important") for i in channels_to_remove]
@@ -396,8 +438,11 @@ channels_to_remove = []
 @client.event
 async def on_ready():
     global channels_to_remove
+    global guild_ensured
     for guild in client.guilds:
         if guild.name == GUILD:
+            
+            guild_ensured = guild
             break
             
     print(guild.features)
@@ -461,7 +506,7 @@ async def on_ready():
         depts = depts.get_text("\n").split("\n")
         
         expected_channel_names = depts
-        expected_channel_names_internal = list(depts)
+        expected_channel_names_internal = tuple(depts)
         print("ecni",expected_channel_names_internal)
     except Exception as e:
         exception_text = traceback.format_exc()
@@ -647,7 +692,7 @@ async def on_ready():
             print("Sorting",category.name)
             channel_names_unsorted = list(channel.name for channel in category.channels)
             channel_names = sorted(channel_names_unsorted)
-        
+            
             if not channel_names_unsorted == channel_names:
                 
                 channel = discord.utils.get(guild.text_channels, name="bootlog")
@@ -673,6 +718,13 @@ async def on_ready():
                 for channel in category.channels:
                     if channel.type != discord.ChannelType.text:
                         await channel.edit(type=discord.ChannelType.text)
+                        
+    for typename in ("-traps", "-quotas"):
+        for deptname in expected_channel_names_internal:
+            tgtname = deptname+typename
+            role = discord.utils.get(guild.roles, name=tgtname)
+            if not role:
+                await guild.create_role(name=tgtname)
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     await channel.send("Alright. Let's fight!")
     
@@ -1002,7 +1054,7 @@ async def myLoop():
                             '''buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]'''
                             buffered_coursetable_row[1].append(fields[0].get_text(separator="_"))
                             buffered_coursetable_row[2].append(fields[1].get_text(separator="_"))
-                            buffered_coursetable_row[3].append(list(fields[2].stripped_strings))
+                            buffered_coursetable_row[3].append(list(fields[2].stripped_strings)) #MUST LIST
                             continue # we are done
                         else:
                             if buffered_coursetable_row:
@@ -1031,9 +1083,9 @@ async def myLoop():
                                 if field.select("span") and i == 4:
                                     buffered_coursetable_row[i] = int(field.select("span")[0].text)
                                     # Working column-wise, unwise to process quotadetail here
-                                    quotadetail_info = list(field.select(".quotadetail")[0].stripped_strings)[1:]
+                                    quotadetail_info = tuple(field.select(".quotadetail")[0].stripped_strings)[1:]
                                 elif i in (3, ):
-                                    buffered_coursetable_row[i] = [list(field.stripped_strings)]
+                                    buffered_coursetable_row[i] = [list(field.stripped_strings)] #MUST LIST
                                 elif i in (1,2):
                                     buffered_coursetable_row[i] = [field.get_text(separator="_")]
                                 elif i in (4,5,6):
@@ -1046,7 +1098,7 @@ async def myLoop():
                                         mkdict["consent"] = False
                                     if field.select(".popup.classnotes"):
                                         # mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
-                                        mkdict["info"] = list(field.select(".popup.classnotes")[0].stripped_strings)
+                                        mkdict["info"] = list(field.select(".popup.classnotes")[0].stripped_strings) #MUST LIST
                                     buffered_coursetable_row[i] = mkdict
                                 else: # i in (0,1,2,3,4,5,6,7), or any other
                                     buffered_coursetable_row[i] = field.get_text(separator="_")
@@ -1077,9 +1129,9 @@ async def myLoop():
                     if not coursecode:
                         coursecode = "{}0871".format(dept)
                     
-                    
-                    sections_keyfield = list(coursetable_list_dicts[0].keys())[0]
-                    
+                    # print(coursetable_list_dicts)
+                    sections_keyfield = next(iter(coursetable_list_dicts[0])) #tuple(coursetable_list_dicts[0].keys())[0]
+                    # next(iter(coursetable_list_dicts[0])) #
                     
                     
                     coursetable_list_dicts_2 = {x.pop(sections_keyfield).replace(" ",""):x for x in coursetable_list_dicts}
@@ -1121,7 +1173,7 @@ async def myLoop():
                 if developer_use_new_differ:
                     the_diffs = newdiffer.diff2(allcourses_dict_old, allcourses_dict)
                 else:
-                    the_diffs = list(dictdiffer.diff(allcourses_dict_old, allcourses_dict))
+                    the_diffs = tuple(dictdiffer.diff(allcourses_dict_old, allcourses_dict))
                 for diff in the_diffs: 
                     if len(diff[1])==8 and diff[1][4:8].isdigit(): ## just a course 
                         diff = list(diff)
@@ -1191,19 +1243,21 @@ async def myLoop():
             await channel.send("admin pls help (savedict):\n```\n{}\n```\n{}".format(exception_text, e))
             
         metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}
+        ignore_updates = False
         try:
             with open(internal_metadata_json_file, "r") as f:
                 metadata_old = json.load(f)
             
             
             if metadata and metadata_old:
-                for diff in list(dictdiffer.diff(metadata_old, metadata)):
-                    ignore_updates = True
-                    _, area, change = diff
+                for diff in dictdiffer.diff(metadata_old, metadata):# list(dictdiffer.diff(metadata_old, metadata)):
+                    ignore_updates = not developer_disable_hashchecks
+                    '''_, area, change = diff
                     channel = discord.utils.get(guild.text_channels, name="updates")
                     await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(len(notif), "" if len(notif) == 1 else "s", "is" if len(notif) == 1 else "are") if notif else "Doesn't matter, no notifications anyways. "))
-                    del notif
-                    notif = {}
+                    if not developer_disable_hashchecks:
+                        del notif
+                        notif = {}'''
             else:
                 raise Exception("Either metadata is nullish. ")
         
@@ -1214,13 +1268,13 @@ async def myLoop():
             print(e)
 
             channel = discord.utils.get(guild.text_channels, name="debug")
-            await channel.send("admin pls help (showmeta):\n```\n{}\n```\n{}".format(exception_text, e))
+            await channel.send("admin pls help (loadmeta):\n```\n{}\n```\n{}".format(exception_text, e))
         
         #time.sleep(300)
         try:
             todos = []
+            ignore_updates_count = 0
             
-
             
             for importancy, suffix in zip((True,False),("-important","")):
                 for k,v in notif.items():
@@ -1257,17 +1311,20 @@ async def myLoop():
                         except:
                             channel = discord.utils.get(guild.text_channels, name="misc"+suffix)
                     for sub_v in v:
-                        if importancy == is_important(sub_v) and filter_phantom_change(sub_v):
-                            sending_string = "```ansi\n{}\n```See: {}\n_ _".format(preetify_diff(sub_v),check_it_out(sub_v))
-                            ## Added ANSI formatting here
-                            print(sending_string)
-                            if len(sending_string) < 1900:
-                                todos.append(channel.send(sending_string))
-                            else:
-                                with open("logfile.txt", "a") as lf:
-                                    lf.writelines(["###TOO-LONG-STRING###", sending_string, datetime.now().strftime("%H:%M:%S"), "------"])
-                                    channel = discord.utils.get(guild.text_channels, name="debug")
-                                    await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
+                        if importancy in is_important(sub_v) and filter_phantom_change(sub_v):
+                            if not ignore_updates:
+                                sending_string = "```ansi\n{}\n```See: {}\n{}_ _".format(preetify_diff(sub_v),check_it_out(sub_v), get_mention_roles(sub_v))
+                                ## Added ANSI formatting here
+                                print(sending_string)
+                                if len(sending_string) < 1900:
+                                    todos.append(channel.send(sending_string))
+                                else:
+                                    with open("logfile.txt", "a") as lf:
+                                        lf.writelines(["###TOO-LONG-STRING###", sending_string, datetime.now().strftime("%H:%M:%S"), "------"])
+                                        channel = discord.utils.get(guild.text_channels, name="debug")
+                                        await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
+                            
+                            ignore_updates_count += 1
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
@@ -1299,8 +1356,32 @@ async def myLoop():
             print(exception_text)
             print(e)
             
-            
-            
+
+    metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}
+    try:
+        with open(internal_metadata_json_file, "r") as f:
+            metadata_old = json.load(f)
+        
+        
+        if metadata and metadata_old:
+            for diff in dictdiffer.diff(metadata_old, metadata):# list(dictdiffer.diff(metadata_old, metadata)):
+                ignore_updates = not developer_disable_hashchecks
+                _, area, change = diff
+                channel = discord.utils.get(guild.text_channels, name="updates")
+                await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(ignore_updates_count, "" if ignore_updates_count == 1 else "s", "is" if ignore_updates_count == 1 else "are") if ignore_updates_count else "Doesn't matter, no notifications anyways. "))
+        else:
+            raise Exception("Either metadata is nullish. ")
+    
+    except Exception as e:
+        exception_text = traceback.format_exc()
+        exception_text = censor_exception(exception_text)
+        print(exception_text)
+        print(e)
+
+        channel = discord.utils.get(guild.text_channels, name="debug")
+        await channel.send("admin pls help (loadmeta):\n```\n{}\n```\n{}".format(exception_text, e))
+
+
     metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}     
     try:
         if metadata:
