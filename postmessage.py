@@ -246,6 +246,10 @@ import asyncio
 import os
 
 import discord
+from discord import app_commands
+
+
+
 from dotenv import load_dotenv
 
 from discord.ext import tasks
@@ -300,11 +304,16 @@ client_requests = http3.AsyncClient()
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
+# GUILD = os.getenv('DISCORD_GUILD')
+GUILD_ID = os.getenv('DISCORD_GUILD_ID')
 bot_identity = "kirito"
 client = discord.Client(intents=discord.Intents.default())
 
-
+tree = app_commands.CommandTree(client)
+'''
+@tree.command(name = "commandname", description = "My first application Command", guild=discord.Object(id=GUILD_ID)) #Add the guild ids in which the slash command will appear. If it should be in all, remove the argument, but note that it will take some time (up to an hour) to register the command if it's for all guilds.
+async def first_command(interaction):
+    await interaction.response.send_message("Hello!")'''
 
 async def do_request(method, url):
     '''response = await aiohttp.request(
@@ -435,12 +444,27 @@ channels_to_remove = '''acct,aesf,aiaa,amat,bibu,bien,bsbe,btec,cbme,ceng,chem,c
 
 channels_to_remove = []
 
+'''
+bot = commands.Bot(command_prefix='$', intents=discord.Intents.default())
+
+@bot.command()
+async def test(ctx, arg):
+    await ctx.send(arg)
+
+'''
+
+
+
 @client.event
 async def on_ready():
+
+
+    await tree.sync(guild=discord.Object(id=GUILD_ID))
+    print("Ready!")
     global channels_to_remove
     global guild_ensured
     for guild in client.guilds:
-        if guild.name == GUILD:
+        if guild.id == GUILD_ID:
             
             guild_ensured = guild
             break
@@ -740,7 +764,7 @@ async def myLoop():
     try:
 
         for guild in client.guilds:
-            if guild.name == GUILD:
+            if guild.id == GUILD_ID:
                 break
         print(
             f'{client.user} is connected to the following guild:\n'
