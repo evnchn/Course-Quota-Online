@@ -5,3 +5,6 @@ logfile.txt
 internal_metadata.json
 
 __pycache__
+
+Pipfile
+Pipfile.lock
