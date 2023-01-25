@@ -379,9 +379,9 @@ def is_important(diff):
     event, location, content = diff
     if isinstance(location, list):
         location = ".".join(str(x) for x in location)
-    unimportant = ("Wait", )
-    for unimportant_strings in unimportant:
-        if unimportant_strings in location:
+    all_unimportant_suffix = (".Wait", ".Enrol", ".Avail")
+    for unimportant_strings in all_unimportant_suffix:
+        if location.endswith(unimportant_strings): #unimportant_strings in location:
             return False
     return True
 
@@ -422,7 +422,7 @@ async def on_ready():
         if not channel:
             try:
                 channel = await guild.create_text_channel(important_preboot_channels, category=category)
-                await channel.edit(type=discord.ChannelType.news)
+                # await channel.edit(type=discord.ChannelType.news)
                 print(channel.type)
             except Exception as e:
                 print(e)
@@ -665,14 +665,14 @@ async def on_ready():
         if "Bot Zone" in category.name:
             count = 0
             for channel in category.channels:
-                if channel.type != discord.ChannelType.news:
+                if channel.type != discord.ChannelType.text:
                     count += 1
             if count:
                 channel = discord.utils.get(guild.text_channels, name="bootlog")
-                await channel.send('Converting {} channel{} to announcements\nin {}, please wait...'.format(count, "" if count == 1 else "s", category.name))
+                await channel.send('Converting {} channel{} to text\nin {}, please wait...'.format(count, "" if count == 1 else "s", category.name))
                 for channel in category.channels:
-                    if channel.type != discord.ChannelType.news:
-                        await channel.edit(type=discord.ChannelType.news)
+                    if channel.type != discord.ChannelType.text:
+                        await channel.edit(type=discord.ChannelType.text)
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     await channel.send("Alright. Let's fight!")
     
