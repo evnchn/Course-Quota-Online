@@ -1231,7 +1231,7 @@ async def myLoop():
                     #expected_channel_names_internal = ['CENG', 'CIVL', 'COMP', 'DBAP', 'ECON', 'EESM', 'ELEC', 'ENGG', 'ENTR', 'ENVR', 'EVSM', 'GFIN', 'ISDN', 'ISOM', 'LIFS', 'MAFS', 'MARK', 'MASS', 'MGCS', 'PHYS', 'SBMT', 'SOSC', 'TEMG']
                     for expected_channel_name in expected_channel_names_internal:
                         print(diff, expected_channel_name)
-                        if diff[1] and (expected_channel_name in diff[1] or expected_channel_name in diff[1][0]):
+                        if diff[1] and (diff[1].startswith(expected_channel_name) or diff[1][0].startswith(expected_channel_name)):
                             notif[expected_channel_name] = notif.get(expected_channel_name, []) + [diff]
                             break
                     else: # no break
