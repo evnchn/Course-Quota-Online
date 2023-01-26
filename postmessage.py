@@ -1,8 +1,4 @@
-developer_max_worker_constant = 4 # 100 is obsolete. Will cause excessive CPU spikes
 
-developer_use_new_differ = True # False is the old version. Rollback if all else fails! 
-
-developer_disable_hashchecks = True
 
 import newdiffer
 
@@ -306,6 +302,25 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 # GUILD = os.getenv('DISCORD_GUILD')
 GUILD_ID = int(os.getenv('DISCORD_GUILD_ID'))
+
+
+
+
+
+
+
+developer_max_worker_constant = int(os.getenv('DMWC')) # 100 is obsolete. Will cause excessive CPU spikes
+
+developer_use_new_differ = bool(int(os.getenv('DUND'))) # False is the old version. Rollback if all else fails! 
+
+developer_disable_hashchecks = bool(int(os.getenv('DDH')))
+
+
+
+
+
+
+
 bot_identity = "kirito"
 client = discord.Client(intents=discord.Intents.default())
 
@@ -421,7 +436,23 @@ def is_important(diff):
     return (True,)
 guild_ensured = None
 def get_mention_roles(diff):
+    global guild_ensured
     #<@&165511591545143296>
+    role_type = get_mention_role_type(diff)
+    event, location, content = diff
+    location = fix_list_locations(location)
+    
+    if ".SECT." in location:
+        location = location.replace(".SECT.","-",1)
+    if role_type in ("-traps","-quotas"):
+        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}{}".format(location[0:4], role_type)).id)
+    elif not role_type:
+        return ""
+    else:
+        return role_type
+
+        
+def get_mention_role_type(diff):
     try:
         event, location, content = diff
         location = fix_list_locations(location)
@@ -430,12 +461,12 @@ def get_mention_roles(diff):
             location = location.replace(".SECT.","-",1)
             
             
-        if not "." in location: # new course
-            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+        if not "." in location: # new course or del course
+            return "-quotas"
         elif event in ("change", "add") and ".QEA." in location and True in is_important(diff): # change or add QEA
-            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+            return "-quotas"
         elif ".Instructor" in location: # Change add or remove instructor
-            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-traps".format(location[0:4])).id)
+            return "-traps"
         else:
             return ""
     except:
@@ -492,7 +523,7 @@ async def on_ready():
     else:
         print("Fine, category exists "+category_name)
     
-    for important_preboot_channels in ("debug", "bootlog", "updates"):
+    for important_preboot_channels in ("debug", "bootlog", "updates", "battle-report", "battle-report-fallback"):
         channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
         if not channel:
             try:
@@ -504,7 +535,9 @@ async def on_ready():
                 print(traceback.format_exc())
                 await guild.create_text_channel(important_preboot_channels)
                 
-                
+    channel = discord.utils.get(guild.text_channels, name="bootlog")
+    
+    await channel.send('Waking up. ')
                 
     
     for channel_name in channels_to_remove:
@@ -668,9 +701,7 @@ async def on_ready():
                     else:
                         print("Fine, channel",expected_channel_name,"exists :)")
     
-    channel = discord.utils.get(guild.text_channels, name="bootlog")
-    
-    await channel.send('Waking up. ')
+
     
     ### THE FOLLOWING DOESN'T WORK BECAUSE API NOT PRESENT
     '''for category in guild.categories:
@@ -734,19 +765,18 @@ async def on_ready():
                     await discord.utils.get(category.channels, name=channel_name).edit(position=channel_names.index(channel_name))
                     print(channel_name, channel_names.index(channel_name))
     channel = discord.utils.get(guild.text_channels, name="bootlog")
-    await channel.send("Alright. Let's fight!")
     
     for category in guild.categories:
         if "Bot Zone" in category.name:
             count = 0
             for channel in category.channels:
-                if channel.type != discord.ChannelType.text:
+                if channel.type != discord.ChannelType.text and "battle-report" not in channel.name:
                     count += 1
             if count:
                 channel = discord.utils.get(guild.text_channels, name="bootlog")
                 await channel.send('Converting {} channel{} to text\nin {}, please wait...'.format(count, "" if count == 1 else "s", category.name))
                 for channel in category.channels:
-                    if channel.type != discord.ChannelType.text:
+                    if channel.type != discord.ChannelType.text and "battle-report" not in channel.name:
                         await channel.edit(type=discord.ChannelType.text)
                         
     for typename in ("-traps", "-quotas"):
@@ -980,6 +1010,19 @@ async def myLoop():
                 os.mkdir(str(pathlib.Path(__file__).parent.absolute() / "filestore/{}".format(fourdigits)))
             except:
                 pass
+            
+            try:
+                for typename in ("-traps", "-quotas"):
+                    for deptname in depts:
+                        tgtname = deptname+typename
+                        role = discord.utils.get(guild.roles, name=tgtname)
+                        if not role:
+                            channel = discord.utils.get(guild.text_channels, name="bootlog")
+                            await channel.send("Creating role {} mid-battle".format(deptname))
+                            await guild.create_role(name=tgtname)
+            except:
+                channel = discord.utils.get(guild.text_channels, name="bootlog")
+                await channel.send("Can't create role {}".format(deptname))
             for i, dept in enumerate(tqdm(depts)):
                 
 
@@ -1205,9 +1248,9 @@ async def myLoop():
                 else:
                     the_diffs = tuple(dictdiffer.diff(allcourses_dict_old, allcourses_dict))
                 for diff in the_diffs: 
-                    if "." not in diff[1] and diff[1][4:8].isdigit(): ## just a course 
+                    if "." not in diff[1].replace(".SECT.","-"): # and diff[1][4:8].isdigit(): ## just a course 
                         diff = list(diff)
-                        diff[2] = "<AN ENTIRE COURSE>"
+                        diff[2] = "<AN ENTIRE {}>".format("COURSE" if "." not in diff[1] else "SECTION")
                     if not diff[1]:
                         '''with open("logfile.txt", "a") as lf:
                             lf.writelines(["###MISC-IMPORTANT###", str(diff), datetime.now().strftime("%H:%M:%S"), "------"])
@@ -1254,14 +1297,18 @@ async def myLoop():
             if allcourses_dict:
                 with open(latest_state_json_file,"w") as f:
                     json.dump(allcourses_dict, f)
-                json_hash = sha256sum(latest_state_json_file)
+                json_hash = "`{}`".format(sha256sum(latest_state_json_file))
                 print(json_hash)
                 channel = discord.utils.get(guild.text_channels, name="hashes-{}".format(bot_identity))
                 messages = [message async for message in channel.history(limit=1)]
                 if not messages:
                     await channel.send(json_hash)
                 else:
-                    await messages[0].edit(content=json_hash)
+                    try:
+                        if messages[0].content != json_hash:
+                            await messages[0].edit(content=json_hash)
+                    except:
+                        await channel.send(json_hash)
                 #await channel.send(json_hash)
         except Exception as e:
             exception_text = traceback.format_exc()
@@ -1385,8 +1432,44 @@ async def myLoop():
             exception_text = censor_exception(exception_text)
             print(exception_text)
             print(e)
-            
-
+    try:
+        notif
+        assert ignore_updates != True
+    except:
+        notif = {} #make the code below give up
+    try:
+        if notif:
+            outstr_battle_report = []
+            notif = sorted(notif.items())
+            for k,v in notif:
+                count_of_quotas = len(list("COUNT" for sub_v in v if get_mention_role_type(sub_v) == "-quotas"))
+                count_of_traps = len(list("COUNT" for sub_v in v if get_mention_role_type(sub_v) == "-traps"))
+                outstr_battle_report.append("{}: {} update{}{}{}".format(k.upper(), len(v), "" if len(v)==1 else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(count_of_quotas) if count_of_quotas else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(count_of_traps) if count_of_traps else ""))
+                
+            outstr_battle_report = "\n".join(outstr_battle_report)
+            print(outstr_battle_report)
+            if outstr_battle_report:
+                try:
+                    channel = discord.utils.get(guild.text_channels, name="battle-report")
+                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+                except:
+                    channel = discord.utils.get(guild.text_channels, name="battle-report-fallback")
+                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+    except Exception as e:
+        exception_text = traceback.format_exc()
+        exception_text = censor_exception(exception_text)
+        print(exception_text)
+        print(e)
+        try:
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (battle-report):\n```\n{}\n```\n{}".format(exception_text, e))
+        except:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+        
+        
     metadata = {"HKUST Server Endpoint": endpoint_ensured, "CQO (SHA256-Base64)": my_hash}
     try:
         with open(internal_metadata_json_file, "r") as f:
@@ -1398,7 +1481,11 @@ async def myLoop():
                 ignore_updates = not developer_disable_hashchecks
                 _, area, change = diff
                 channel = discord.utils.get(guild.text_channels, name="updates")
-                await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(ignore_updates_count, "" if ignore_updates_count == 1 else "s", "is" if ignore_updates_count == 1 else "are") if ignore_updates_count else "Doesn't matter, no notifications anyways. "))
+                try:
+                    ignore_updates_count
+                    await channel.send("```\nUpdated {} from:\n{}\nto\n{}\n```{}\n_ _".format(area, change[0], change[1], "As such, {} notification{} {} safely ignored. ".format(ignore_updates_count, "" if ignore_updates_count == 1 else "s", "is" if ignore_updates_count == 1 else "are") if ignore_updates_count else "Doesn't matter, no notifications anyways. "))
+                except:
+                    pass
         else:
             raise Exception("Either metadata is nullish. ")
     
