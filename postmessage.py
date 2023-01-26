@@ -422,21 +422,24 @@ def is_important(diff):
 guild_ensured = None
 def get_mention_roles(diff):
     #<@&165511591545143296>
-    event, location, content = diff
-    location = fix_list_locations(location)
-    
-    if ".SECT." in location:
-        location = location.replace(".SECT.","-",1)
+    try:
+        event, location, content = diff
+        location = fix_list_locations(location)
         
-        
-    if not "." in location:
-        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
-    elif event == "change" and ".QEA." in location and True in is_important(diff):
-        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
-    elif ".Instructor" in location:
-        return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-traps".format(location[0:4])).id)
-    else:
-        return ""
+        if ".SECT." in location:
+            location = location.replace(".SECT.","-",1)
+            
+            
+        if not "." in location:
+            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+        elif event == "change" and ".QEA." in location and True in is_important(diff):
+            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
+        elif ".Instructor" in location:
+            return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-traps".format(location[0:4])).id)
+        else:
+            return ""
+    except:
+        return "Not sure who to @, though. "
 
 channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
 channels_to_remove += [(i+"-important") for i in channels_to_remove]
