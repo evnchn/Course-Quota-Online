@@ -305,7 +305,7 @@ client_requests = http3.AsyncClient()
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 # GUILD = os.getenv('DISCORD_GUILD')
-GUILD_ID = os.getenv('DISCORD_GUILD_ID')
+GUILD_ID = int(os.getenv('DISCORD_GUILD_ID'))
 bot_identity = "kirito"
 client = discord.Client(intents=discord.Intents.default())
 
