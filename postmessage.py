@@ -468,6 +468,9 @@ async def on_ready():
             
             guild_ensured = guild
             break
+    else:
+        print("GUILD NOT FOUND!!!")
+        input()
             
     print(guild.features)
 
