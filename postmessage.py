@@ -430,11 +430,11 @@ def get_mention_roles(diff):
             location = location.replace(".SECT.","-",1)
             
             
-        if not "." in location:
+        if not "." in location: # new course
             return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
-        elif event == "change" and ".QEA." in location and True in is_important(diff):
+        elif event in ("change", "add") and ".QEA." in location and True in is_important(diff): # change or add QEA
             return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-quotas".format(location[0:4])).id)
-        elif ".Instructor" in location:
+        elif ".Instructor" in location: # Change add or remove instructor
             return "<@&{}>".format(discord.utils.get(guild_ensured.roles, name="{}-traps".format(location[0:4])).id)
         else:
             return ""
@@ -1205,7 +1205,7 @@ async def myLoop():
                 else:
                     the_diffs = tuple(dictdiffer.diff(allcourses_dict_old, allcourses_dict))
                 for diff in the_diffs: 
-                    if len(diff[1])==8 and diff[1][4:8].isdigit(): ## just a course 
+                    if "." not in diff[1] and diff[1][4:8].isdigit(): ## just a course 
                         diff = list(diff)
                         diff[2] = "<AN ENTIRE COURSE>"
                     if not diff[1]:
