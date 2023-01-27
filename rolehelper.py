@@ -58,7 +58,7 @@ async def remove(ctx, subject: discord.Option(str), alert: discord.Option(str, c
     
 @bot.event
 async def on_ready():
-    game = discord.CustomActivity("/add /remove or /ping")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/add or /remove"))
+    # game = discord.CustomActivity("/add /remove or /ping")
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/add /remove or /ping"))
 
 bot.run(TOKEN_2)
