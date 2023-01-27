@@ -18,12 +18,15 @@ async def add(ctx, subject: discord.Option(str), alert: discord.Option(str, choi
     print(role)
     try:
         assert len(subject) == 4
-        await ctx.author.add_roles(discord.utils.get(discord.utils.get(bot.guilds, id=GUILD_ID).roles , name=role))
-        await ctx.respond(f"Added role {role}")
+        if role not in [_.name for _ in ctx.author.roles]:
+            await ctx.author.add_roles(discord.utils.get(discord.utils.get(bot.guilds, id=GUILD_ID).roles , name=role))
+            await ctx.respond(f"Added role {role}", ephemeral=True)
+        else:
+            await ctx.respond(f"Already have role {role}", ephemeral=True)
     except Exception as e:
         print(e)
         print(traceback.format_exc())
-        await ctx.respond(f"Failed to find role {role}")
+        await ctx.respond(f"Failed to find role {role}", ephemeral=True)
         
 @bot.command()
 # pycord will figure out the types for you
@@ -34,12 +37,15 @@ async def remove(ctx, subject: discord.Option(str), alert: discord.Option(str, c
     print(role)
     try:
         assert len(subject) == 4
-        await ctx.author.remove_roles(discord.utils.get(discord.utils.get(bot.guilds, id=GUILD_ID).roles , name=role))
-        await ctx.respond(f"Removed role {role}")
+        if role in [_.name for _ in ctx.author.roles]:
+            await ctx.author.remove_roles(discord.utils.get(discord.utils.get(bot.guilds, id=GUILD_ID).roles , name=role))
+            await ctx.respond(f"Removed role {role}", ephemeral=True)
+        else:
+            await ctx.respond(f"Already removed role {role}", ephemeral=True)
     except Exception as e:
         print(e)
         print(traceback.format_exc())
-        await ctx.respond(f"Failed to find role {role}")
+        await ctx.respond(f"Failed to find role {role}", ephemeral=True)
     
 @bot.event
 async def on_ready():
