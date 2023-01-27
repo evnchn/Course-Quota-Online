@@ -9,12 +9,21 @@ print(type(GUILD_ID))
 print(GUILD_ID)
 bot = discord.Bot()
 
-@bot.command()
+async def list_search(ctx: discord.AutocompleteContext):
+    """Return's A List Of Autocomplete Results"""
+    return sorted([i for i in list(set((_.name.split("-")[0].upper() for _ in discord.utils.get(bot.guilds, id=GUILD_ID).roles))) if i.startswith(ctx.value.upper())])
+    
+@bot.command(description="Tests Asuna's reaction speed") # this decorator makes a slash command
+async def ping(ctx): # a slash command will be created with the name "ping"
+    await ctx.respond(f"Reaction speed is {str(bot.latency*1000)[:3]}ms. \nSlower than Kirito, but faster than you!", ephemeral=True)
+    
+    
+@bot.command(description="Add role for @mention")
 # pycord will figure out the types for you
-async def add(ctx, subject: discord.Option(str), alert: discord.Option(str, choices=['-traps', '-quotas'])):
+async def add(ctx, subject: discord.Option(str, autocomplete=list_search), alert: discord.Option(str, choices=['traps', 'quotas'])):
     # you can use them as they were actual integers
     subject = subject.upper()
-    role = subject+alert
+    role = subject+"-"+alert
     print(role)
     try:
         assert len(subject) == 4
@@ -28,7 +37,7 @@ async def add(ctx, subject: discord.Option(str), alert: discord.Option(str, choi
         print(traceback.format_exc())
         await ctx.respond(f"Failed to find role {role}", ephemeral=True)
         
-@bot.command()
+@bot.command(description="Remove role from @mention")
 # pycord will figure out the types for you
 async def remove(ctx, subject: discord.Option(str), alert: discord.Option(str, choices=['-traps', '-quotas'])):
     # you can use them as they were actual integers
@@ -49,7 +58,7 @@ async def remove(ctx, subject: discord.Option(str), alert: discord.Option(str, c
     
 @bot.event
 async def on_ready():
-    game = discord.CustomActivity("/add or /remove")
+    game = discord.CustomActivity("/add /remove or /ping")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/add or /remove"))
 
 bot.run(TOKEN_2)
