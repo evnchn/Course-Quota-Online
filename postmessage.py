@@ -489,6 +489,186 @@ async def test(ctx, arg):
 
 
 
+
+
+
+
+
+
+def soup_to_allcourses_dict(soup):
+    allcourses_dict_internal = {}
+    courses = soup.select('#classes > .course')
+    
+    
+    buffered_coursetable_row = []
+    
+    for course in courses:
+        course_flags = []
+        coursetitle = course.select("h2")[0].decode_contents()
+        courseinfo_bar = course.select(".courseinfo > div")
+        for elem in courseinfo_bar[:-1]:
+            #print(elem.get_text(separator=": "))
+            course_flags.append(elem.get_text(separator=": "))
+            
+        course_flags.sort()
+        courseinfo = course.select(".courseattr.popup > .popupdetail > table")
+        try:
+            assert len(courseinfo) == 1
+            courseinfo = courseinfo[0]
+            courseinfo_dict = {}
+            for row in courseinfo.select("tr"):
+                if len(row.find_parents("table")) == 1:
+                    thead = row.select("th")[0].get_text(separator="_")
+                    tcontent = row.select("td")[0].get_text(separator=" ")
+                    courseinfo_dict[thead] = tcontent
+                else: 
+                    pass
+        except:
+            courseinfo_dict = {"FAILURE":"course_popup_table_count_mismatch", "TABLE_COUNT":len(courseinfo)}
+        coursetable = course.select("table.sections")
+        course_table_length_mismatch = False
+        try:
+            assert len(coursetable) == 1
+        except:
+            coursetable_len = len(coursetable)
+            course_table_length_mismatch = True
+        coursetable = coursetable[0]
+        coursetable_list_dicts = []
+        quotadetail_info = None
+        keys = coursetable.select('tr')[0].select("th")
+        keys = [k.text.replace(" & ", "_N_") for k in keys]
+        for row in coursetable.select('tr')[1:]:
+            fields = row.select("td")
+            
+            if buffered_coursetable_row and len(fields) == 3: # is an extension
+                '''buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
+                buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
+                buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
+                buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
+                buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))'''
+                #print(buffered_coursetable_row, buffered_coursetable_row_2)
+                '''buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]'''
+                buffered_coursetable_row[1].append(fields[0].get_text(separator="_"))
+                buffered_coursetable_row[2].append(fields[1].get_text(separator="_"))
+                buffered_coursetable_row[3].append(list(fields[2].stripped_strings)) #MUST LIST
+                continue # we are done
+            else:
+                if buffered_coursetable_row:
+                    ### Now get ready to intervene!
+                    row_dict_target = dict(zip(keys,buffered_coursetable_row))
+                    qea_dict = {}
+                    if quotadetail_info is not None:
+                        for line in quotadetail_info:
+                            student_group, qea_slashed = line.split(": ")
+                            qea_split = tuple(int(i) for i in qea_slashed.split("/"))
+                            row_dict_target["Quota"] -= qea_split[0]
+                            row_dict_target["Enrol"] -= qea_split[1]
+                            row_dict_target["Avail"] -= qea_split[2]
+                            qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
+                    
+                    qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
+                    
+                    row_dict_target["QEA"] = qea_dict
+                    
+                    coursetable_list_dicts.append(row_dict_target)
+                    buffered_coursetable_row = []
+                    quotadetail_info = None
+                if len(buffered_coursetable_row) < len(fields):
+                    buffered_coursetable_row = [None for i in range(len(fields))]
+                for i, field in enumerate(fields):
+                    if field.select("span") and i == 4:
+                        buffered_coursetable_row[i] = int(field.select("span")[0].text)
+                        # Working column-wise, unwise to process quotadetail here
+                        quotadetail_info = tuple(field.select(".quotadetail")[0].stripped_strings)[1:]
+                    elif i in (3, ):
+                        buffered_coursetable_row[i] = [list(field.stripped_strings)] #MUST LIST
+                    elif i in (1,2):
+                        buffered_coursetable_row[i] = [field.get_text(separator="_")]
+                    elif i in (4,5,6):
+                        buffered_coursetable_row[i] = int(field.get_text(separator="_"))
+                    elif i in (8,):
+                        mkdict = {}
+                        if field.select(".popup.consent"):
+                            mkdict["consent"] = True
+                        else:
+                            mkdict["consent"] = False
+                        if field.select(".popup.classnotes"):
+                            # mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
+                            mkdict["info"] = list(field.select(".popup.classnotes")[0].stripped_strings) #MUST LIST
+                        buffered_coursetable_row[i] = mkdict
+                    else: # i in (0,1,2,3,4,5,6,7), or any other
+                        buffered_coursetable_row[i] = field.get_text(separator="_")
+            #coursetable_list_dicts.append(dict(zip(keys,field2)))
+        if buffered_coursetable_row:
+            ### Now get ready to intervene!
+            row_dict_target = dict(zip(keys,buffered_coursetable_row))
+            qea_dict = {}
+            if quotadetail_info is not None:
+                for line in quotadetail_info:
+                    student_group, qea_slashed = line.split(": ")
+                    qea_split = tuple(int(i) for i in qea_slashed.split("/"))
+                    row_dict_target["Quota"] -= qea_split[0]
+                    row_dict_target["Enrol"] -= qea_split[1]
+                    row_dict_target["Avail"] -= qea_split[2]
+                    qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
+            
+            qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
+            
+            row_dict_target["QEA"] = qea_dict
+            
+            coursetable_list_dicts.append(row_dict_target)
+            buffered_coursetable_row = []
+            quotadetail_info = None
+        coursecode = coursetitle.split("-")[0].strip().replace(" ","")
+        
+        
+        if not coursecode:
+            coursecode = "{}0871".format(dept)
+        
+        # print(coursetable_list_dicts)
+        sections_keyfield = next(iter(coursetable_list_dicts[0])) #tuple(coursetable_list_dicts[0].keys())[0]
+        # next(iter(coursetable_list_dicts[0])) #
+        
+        
+        coursetable_list_dicts_2 = {x.pop(sections_keyfield).replace(" ",""):x for x in coursetable_list_dicts}
+        
+        if course_table_length_mismatch == True:
+            allcourses_dict_internal[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
+        else:
+            allcourses_dict_internal[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield}
+    return allcourses_dict_internal
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @client.event
 async def on_ready():
 
@@ -792,10 +972,12 @@ async def on_ready():
     myLoop.start()
 
 # last_valid_endpoint is endpoint_ensured
-last_valid_page = None
+last_parsed_url = None
+last_parsed_dept = None
 @tasks.loop(seconds = 90) # repeat after every 10 seconds
 async def myLoop():
-    global last_valid_page
+    global last_parsed_url
+    global last_parsed_dept
     global endpoint_ensured
     try:
 
@@ -811,32 +993,17 @@ async def myLoop():
         try:
             
             debug_write_to_file = False
-            if last_valid_page:
+            if last_parsed_url and last_parsed_dept:
                 # use newer endpoint determination and course list determination. 
                 # iterate through course list until get a fresh page
                 # then go on
                 print("---REVO - FLASHBACK---")
-                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-                    loop = asyncio.get_event_loop()
-                    futures = [
-
-                        loop.run_in_executor(
-                            executor, 
-                            bs.BeautifulSoup, 
-                            ptxt, 
-                            'lxml'
-                        )
-                        for ptxt in [last_valid_page.text]
-                    ]
-                    rs2_beautifulsoup = await asyncio.gather(*futures)
-                soup = rs2_beautifulsoup[0]
-                endpoint = soup.select(".termselect > a")[0]['href']
-                endpoint = urljoin(last_valid_page.url, endpoint)
-                endpoint_ensured = endpoint
+                
+                endpoint = last_parsed_url
+                endpoint_ensured = last_parsed_url
                 print(endpoint)
                 
-                depts = soup.select('.depts')[0]
-                depts = depts.get_text("\n").split("\n")
+                depts = last_parsed_dept
                 
                 print(depts)
                 
@@ -962,41 +1129,6 @@ async def myLoop():
             #os.system("cls")
 
             
-            
-            
-            
-            
-            urls = ['{}subject/{}'.format(endpoint, dept) for dept in depts]
-            
-            
-            
-            
-            #rs = (grequests.get(u, timeout=10) for u in urls)
-            #rs2 = grequests.map(rs)
-            print("getting all pages")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=developer_max_worker_constant) as executor:
-                loop = asyncio.get_event_loop()
-                futures = [
-
-                    loop.run_in_executor(
-                        executor, 
-                        functools.partial(requests.get, url=target_url, timeout= 10)
-                    )
-                    for target_url in urls
-                ]
-                rs2 = await asyncio.gather(*futures)
-            print("got all pages")
-            '''loop.run_in_executor(
-                executor, 
-                requests.get, 
-                url
-            )'''
-            print(depts)
-            
-            
-            for page in rs2:
-                if page.status_code == 200:
-                    last_valid_page = page
             try:
                 os.mkdir(str(pathlib.Path(__file__).parent.absolute() / "filestore"))
             except:
@@ -1011,6 +1143,72 @@ async def myLoop():
             except:
                 pass
             
+            
+            
+            urls = ['{}subject/{}'.format(endpoint, dept) for dept in depts]
+            
+            
+            def url_to_state_purl_allcourses_dict(url):
+                state = None
+                purl = None
+                depts = None
+                allcourses_dict = None
+                
+                req = requests.get(url=url, timeout= 10)
+                state = req.status_code
+                try:
+                    fourdigits = url.split("/")[-3]
+                    dept = url.split("/")[-1]
+                    with open(str(pathlib.Path(__file__).parent.absolute() / "filestore/{}/{}.html".format(fourdigits, dept)), "w", encoding="utf-8") as savefile:
+                        savefile.write(req.text)
+                except:
+                    pass
+                if state == 200:
+                
+                    soup = bs.BeautifulSoup(req.text,'lxml')
+                    purl = urljoin(url, soup.select(".termselect > a")[0]['href'])
+                    allcourses_dict = soup_to_allcourses_dict(soup)
+                    depts = soup.select('.depts')[0].get_text("\n").split("\n")
+                    return (state, purl, depts, allcourses_dict)
+                else:
+                    return (state, purl, depts, allcourses_dict)
+                    
+            with concurrent.futures.ThreadPoolExecutor(max_workers=developer_max_worker_constant) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
+                    loop.run_in_executor(
+                        executor, 
+                        url_to_state_purl_allcourses_dict, 
+                        target_url
+                    )
+
+                    for target_url in urls
+                ]
+                rs_ultimate = await asyncio.gather(*futures)
+            
+            """
+            print("getting all pages")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=developer_max_worker_constant) as executor:
+                loop = asyncio.get_event_loop()
+                futures = [
+
+                    loop.run_in_executor(
+                        executor, 
+                        functools.partial(requests.get, url=target_url, timeout= 10)
+                    )
+                    for target_url in urls
+                ]
+                rs2 = await asyncio.gather(*futures)
+            print("got all pages")
+
+            print(depts)
+            
+            
+            for page in rs2:
+                if page.status_code == 200:
+                    last_valid_page = page
+
+            """
             try:
                 for typename in ("-traps", "-quotas"):
                     for deptname in depts:
@@ -1023,17 +1221,8 @@ async def myLoop():
             except:
                 channel = discord.utils.get(guild.text_channels, name="bootlog")
                 await channel.send("Can't create role {}".format(deptname))
+            """
             for i, dept in enumerate(tqdm(depts)):
-                
-
-                '''url = '{}subject/{}'.format(endpoint, dept)
-                print(url)
-                #url = "http://localhost:8000/{}".format(dept)
-
-                page = await client_requests.get(url, timeout=10)
-                #page = await do_request("GET",url)
-                
-                assert page.status_code == 200'''
                 
                 page = rs2[i]
 
@@ -1071,150 +1260,20 @@ async def myLoop():
                     ]
                     rs2_beautifulsoup = await asyncio.gather(*futures)
                 #print("Parsed",dept)
-                soup = rs2_beautifulsoup[0]
+                # soup = rs2_beautifulsoup[0]
                 #soup = bs.BeautifulSoup(page.text,'lxml')
-
-                courses = soup.select('#classes > .course')
+                allcourses_dict.update(soup_to_allcourses_dict(rs2_beautifulsoup[0]))
+                """
+            for state, purl, dept, allcourses_dict_partial in rs_ultimate:
+                if state != 200:
+                    raise Exception("HTML state {}".format(state))
+                last_parsed_url = purl
+                last_parsed_dept = dept
+                allcourses_dict.update(allcourses_dict_partial)
                 
                 
-                buffered_coursetable_row = []
                 
-                for course in courses:
-                    course_flags = []
-                    coursetitle = course.select("h2")[0].decode_contents()
-                    courseinfo_bar = course.select(".courseinfo > div")
-                    for elem in courseinfo_bar[:-1]:
-                        #print(elem.get_text(separator=": "))
-                        course_flags.append(elem.get_text(separator=": "))
-                        
-                    course_flags.sort()
-                    courseinfo = course.select(".courseattr.popup > .popupdetail > table")
-                    try:
-                        assert len(courseinfo) == 1
-                        courseinfo = courseinfo[0]
-                        courseinfo_dict = {}
-                        for row in courseinfo.select("tr"):
-                            if len(row.find_parents("table")) == 1:
-                                thead = row.select("th")[0].get_text(separator="_")
-                                tcontent = row.select("td")[0].get_text(separator=" ")
-                                courseinfo_dict[thead] = tcontent
-                            else: 
-                                pass
-                    except:
-                        courseinfo_dict = {"FAILURE":"course_popup_table_count_mismatch", "TABLE_COUNT":len(courseinfo)}
-                    coursetable = course.select("table.sections")
-                    course_table_length_mismatch = False
-                    try:
-                        assert len(coursetable) == 1
-                    except:
-                        coursetable_len = len(coursetable)
-                        course_table_length_mismatch = True
-                    coursetable = coursetable[0]
-                    coursetable_list_dicts = []
-                    quotadetail_info = None
-                    keys = coursetable.select('tr')[0].select("th")
-                    keys = [k.text.replace(" & ", "_N_") for k in keys]
-                    for row in coursetable.select('tr')[1:]:
-                        fields = row.select("td")
-                        
-                        if buffered_coursetable_row and len(fields) == 3: # is an extension
-                            '''buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
-                            buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
-                            buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
-                            buffered_coursetable_row_2[2] = "; {}".format(fields[1].get_text(separator="_"))
-                            buffered_coursetable_row_2[3] = "; {}".format(fields[2].get_text(separator="_"))'''
-                            #print(buffered_coursetable_row, buffered_coursetable_row_2)
-                            '''buffered_coursetable_row = [i if not isinstance(i, str) else str(i)+str(k) for i,k in zip(buffered_coursetable_row, buffered_coursetable_row_2)]'''
-                            buffered_coursetable_row[1].append(fields[0].get_text(separator="_"))
-                            buffered_coursetable_row[2].append(fields[1].get_text(separator="_"))
-                            buffered_coursetable_row[3].append(list(fields[2].stripped_strings)) #MUST LIST
-                            continue # we are done
-                        else:
-                            if buffered_coursetable_row:
-                                ### Now get ready to intervene!
-                                row_dict_target = dict(zip(keys,buffered_coursetable_row))
-                                qea_dict = {}
-                                if quotadetail_info is not None:
-                                    for line in quotadetail_info:
-                                        student_group, qea_slashed = line.split(": ")
-                                        qea_split = tuple(int(i) for i in qea_slashed.split("/"))
-                                        row_dict_target["Quota"] -= qea_split[0]
-                                        row_dict_target["Enrol"] -= qea_split[1]
-                                        row_dict_target["Avail"] -= qea_split[2]
-                                        qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
-                                
-                                qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
-                                
-                                row_dict_target["QEA"] = qea_dict
-                                
-                                coursetable_list_dicts.append(row_dict_target)
-                                buffered_coursetable_row = []
-                                quotadetail_info = None
-                            if len(buffered_coursetable_row) < len(fields):
-                                buffered_coursetable_row = [None for i in range(len(fields))]
-                            for i, field in enumerate(fields):
-                                if field.select("span") and i == 4:
-                                    buffered_coursetable_row[i] = int(field.select("span")[0].text)
-                                    # Working column-wise, unwise to process quotadetail here
-                                    quotadetail_info = tuple(field.select(".quotadetail")[0].stripped_strings)[1:]
-                                elif i in (3, ):
-                                    buffered_coursetable_row[i] = [list(field.stripped_strings)] #MUST LIST
-                                elif i in (1,2):
-                                    buffered_coursetable_row[i] = [field.get_text(separator="_")]
-                                elif i in (4,5,6):
-                                    buffered_coursetable_row[i] = int(field.get_text(separator="_"))
-                                elif i in (8,):
-                                    mkdict = {}
-                                    if field.select(".popup.consent"):
-                                        mkdict["consent"] = True
-                                    else:
-                                        mkdict["consent"] = False
-                                    if field.select(".popup.classnotes"):
-                                        # mkdict["info"] = ''.join(field.select(".popup.classnotes")[0].get_text(separator="; ").splitlines()) # no need newlines here. 
-                                        mkdict["info"] = list(field.select(".popup.classnotes")[0].stripped_strings) #MUST LIST
-                                    buffered_coursetable_row[i] = mkdict
-                                else: # i in (0,1,2,3,4,5,6,7), or any other
-                                    buffered_coursetable_row[i] = field.get_text(separator="_")
-                        #coursetable_list_dicts.append(dict(zip(keys,field2)))
-                    if buffered_coursetable_row:
-                        ### Now get ready to intervene!
-                        row_dict_target = dict(zip(keys,buffered_coursetable_row))
-                        qea_dict = {}
-                        if quotadetail_info is not None:
-                            for line in quotadetail_info:
-                                student_group, qea_slashed = line.split(": ")
-                                qea_split = tuple(int(i) for i in qea_slashed.split("/"))
-                                row_dict_target["Quota"] -= qea_split[0]
-                                row_dict_target["Enrol"] -= qea_split[1]
-                                row_dict_target["Avail"] -= qea_split[2]
-                                qea_dict[student_group] = {"Quota": qea_split[0], "Enrol":qea_split[1], "Avail":qea_split[2]}
-                        
-                        qea_dict["OPEN"] = {"Quota": row_dict_target.pop("Quota"), "Enrol":row_dict_target.pop("Enrol"), "Avail":row_dict_target.pop("Avail")}
-                        
-                        row_dict_target["QEA"] = qea_dict
-                        
-                        coursetable_list_dicts.append(row_dict_target)
-                        buffered_coursetable_row = []
-                        quotadetail_info = None
-                    coursecode = coursetitle.split("-")[0].strip().replace(" ","")
-                    
-                    
-                    if not coursecode:
-                        coursecode = "{}0871".format(dept)
-                    
-                    # print(coursetable_list_dicts)
-                    sections_keyfield = next(iter(coursetable_list_dicts[0])) #tuple(coursetable_list_dicts[0].keys())[0]
-                    # next(iter(coursetable_list_dicts[0])) #
-                    
-                    
-                    coursetable_list_dicts_2 = {x.pop(sections_keyfield).replace(" ",""):x for x in coursetable_list_dicts}
-                    
-                    if course_table_length_mismatch == True:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield, "FAILURE":"course_table_length_mismatch", "TABLE_COUNT":coursetable_len}
-                    else:
-                        allcourses_dict[coursecode] = {"COURSE_INFO":courseinfo_dict, "COURSE_FLAGS": course_flags, "SECT":coursetable_list_dicts_2, "_SECTIONS_keyfield": sections_keyfield}
-                    
-                    
+                
                     
         except Exception as e:
             exception_text = traceback.format_exc()
