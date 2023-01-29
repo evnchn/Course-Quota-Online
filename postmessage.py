@@ -1510,7 +1510,11 @@ async def myLoop():
             if outstr_battle_report:
                 try:
                     channel = discord.utils.get(guild.text_channels, name="battle-report")
-                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+                    msg = await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+                    try:
+                        await msg.publish()
+                    except:
+                        pass
                 except:
                     channel = discord.utils.get(guild.text_channels, name="battle-report-fallback")
                     await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))

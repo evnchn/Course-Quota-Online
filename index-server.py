@@ -2,12 +2,17 @@ from flask import Flask, send_file
 from waitress import serve
 import pathlib
 
+import sys
 
 
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+
+from flask_talisman import Talisman
+
 app = Flask(__name__)
+Talisman(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -78,5 +83,5 @@ def pathloader(path):
         return ""
         
 if __name__ == "__main__":
-    # app.run(port=2280)
-    serve(app, host='0.0.0.0', port=2280)
+    app.run(port=2280, ssl_context=(sys.argv[1]), sys.argv[2])
+    # serve(app, host='0.0.0.0', port=2280, ssl_context=('{}cert.pem'.format(sys.argv[1]), '{}key.pem'.format(sys.argv[1])))
