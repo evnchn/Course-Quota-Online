@@ -83,5 +83,9 @@ def pathloader(path):
         return ""
         
 if __name__ == "__main__":
-    app.run(port=2280, ssl_context=(sys.argv[1]), sys.argv[2])
+    try:
+    
+        app.run(host='0.0.0.0', port=2280, ssl_context=(sys.argv[1], sys.argv[2]))
+    except:
+        app.run(host='0.0.0.0', port=2280)
     # serve(app, host='0.0.0.0', port=2280, ssl_context=('{}cert.pem'.format(sys.argv[1]), '{}key.pem'.format(sys.argv[1])))
