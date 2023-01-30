@@ -1498,17 +1498,76 @@ async def myLoop():
         assert ignore_updates != True
     except:
         notif = {} #make the code below give up
+    '''
     try:
         if notif:
             outstr_battle_report = []
-            notif = sorted(notif.items())
-            for k,v in notif:
+            notif_2 = dict(sorted(notif.items()))
+            for k,v in notif_2.items():
                 count_of_quotas = len(list("COUNT" for sub_v in v if get_mention_role_type(sub_v) == "-quotas"))
                 count_of_traps = len(list("COUNT" for sub_v in v if get_mention_role_type(sub_v) == "-traps"))
                 outstr_battle_report.append("{}: {} update{}{}{}".format(k.upper(), len(v), "" if len(v)==1 else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(count_of_quotas) if count_of_quotas else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(count_of_traps) if count_of_traps else ""))
                 
             outstr_battle_report = "\n".join(outstr_battle_report)
             print(outstr_battle_report)
+            if outstr_battle_report:
+                try:
+                    channel = discord.utils.get(guild.text_channels, name="battle-report")
+                    msg = await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+                    try:
+                        await msg.publish()
+                    except:
+                        pass
+                except:
+                    channel = discord.utils.get(guild.text_channels, name="battle-report-fallback")
+                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+    except Exception as e:
+        exception_text = traceback.format_exc()
+        exception_text = censor_exception(exception_text)
+        print(exception_text)
+        print(e)
+        try:
+            channel = discord.utils.get(guild.text_channels, name="debug")
+            await channel.send("admin pls help (battle-report):\n```\n{}\n```\n{}".format(exception_text, e))
+        except:
+            exception_text = traceback.format_exc()
+            exception_text = censor_exception(exception_text)
+            print(exception_text)
+            print(e)
+            
+    '''  
+    try:
+        if notif:
+            outstr_battle_report = []
+            #print(notif)
+            notif_2 = sorted(notif.values())
+            #print(notif_2)
+            notif_2 = [item for sublist in notif_2 for item in sublist] # Flatten, see https://stackoverflow.com/a/952952
+            #print(notif_2)
+            course_updates = {} # normal, quotas, traps
+            
+            for each_notif in notif_2:
+                event, location, content = each_notif
+                location = fix_list_locations(location)
+                course = location.split(".")[0]
+                old_list = course_updates.get(course, [0,0,0])
+                if get_mention_role_type(each_notif) == "-traps":
+                    old_list[2] += 1
+                    old_list[0] += 1 #recreate old behaviour
+                elif get_mention_role_type(each_notif) == "-quotas":
+                    old_list[1] += 1
+                    old_list[0] += 1 #recreate old behaviour
+                else:
+                    old_list[0] += 1
+                course_updates[course] = old_list
+                
+            for course, ntq in course_updates.items():
+                outstr_battle_report.append("{}: {} update{}{}{}".format(course, ntq[0], "" if ntq[0] else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(ntq[1]) if ntq[1] else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(ntq[2]) if ntq[2] else ""))
+                
+            outstr_battle_report = "\n".join(outstr_battle_report)
+            os.system("cls")
+            print(outstr_battle_report)
+            
             if outstr_battle_report:
                 try:
                     channel = discord.utils.get(guild.text_channels, name="battle-report")
