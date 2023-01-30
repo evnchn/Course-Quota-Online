@@ -259,6 +259,8 @@ latest_state_json_file = str(pathlib.Path(__file__).parent.absolute() / "latest_
 
 internal_metadata_json_file = str(pathlib.Path(__file__).parent.absolute() / "internal_metadata.json")
 
+logfile_location = str(pathlib.Path(__file__).parent.absolute() / "logfile.txt")
+
 my_location = str(pathlib.Path(__file__).absolute())
 
 my_hash = sha256sum(my_location)
@@ -1457,7 +1459,7 @@ async def myLoop():
                                 if len(sending_string) < 1900:
                                     todos.append(channel.send(sending_string))
                                 else:
-                                    with open("logfile.txt", "a") as lf:
+                                    with open(logfile_location, "a", encoding="utf-8") as lf:
                                         lf.writelines(["###TOO-LONG-STRING###", sending_string, datetime.now().strftime("%H:%M:%S"), "------"])
                                         channel = discord.utils.get(guild.text_channels, name="debug")
                                         await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
@@ -1560,9 +1562,9 @@ async def myLoop():
                 else:
                     old_list[0] += 1
                 course_updates[course] = old_list
-                
+            course_updates = {k: v for k, v in sorted(course_updates.items(), key=lambda item: item[0])}
             for course, ntq in course_updates.items():
-                outstr_battle_report.append("{}: {} update{}{}{}".format(course, ntq[0], "" if ntq[0] else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(ntq[1]) if ntq[1] else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(ntq[2]) if ntq[2] else ""))
+                outstr_battle_report.append("{}: {} update{}{}{}".format(course, ntq[0], "" if ntq[0]==1 else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(ntq[1]) if ntq[1] else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(ntq[2]) if ntq[2] else ""))
                 
             outstr_battle_report = "\n".join(outstr_battle_report)
             os.system("cls")
