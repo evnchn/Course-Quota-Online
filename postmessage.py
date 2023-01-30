@@ -495,7 +495,7 @@ async def test(ctx, arg):
 
 
 
-def soup_to_allcourses_dict(soup):
+def soup_to_allcourses_dict(soup, dept="MISC"):
     allcourses_dict_internal = {}
     courses = soup.select('#classes > .course')
     
@@ -1156,6 +1156,8 @@ async def myLoop():
                 
                 req = requests.get(url=url, timeout= 10)
                 state = req.status_code
+                fourdigits = url.split("/")[-3]
+                dept = url.split("/")[-1]
                 try:
                     fourdigits = url.split("/")[-3]
                     dept = url.split("/")[-1]
@@ -1167,7 +1169,7 @@ async def myLoop():
                 
                     soup = bs.BeautifulSoup(req.text,'lxml')
                     purl = urljoin(url, soup.select(".termselect > a")[0]['href'])
-                    allcourses_dict = soup_to_allcourses_dict(soup)
+                    allcourses_dict = soup_to_allcourses_dict(soup, dept=dept)
                     depts = soup.select('.depts')[0].get_text("\n").split("\n")
                     return (state, purl, depts, allcourses_dict)
                 else:
