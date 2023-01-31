@@ -720,7 +720,10 @@ async def on_ready():
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     
     await channel.send('Waking up. ')
-                
+    #embed=discord.Embed(title="Battle report", description="```ansi\n{}\n```See: {}", color=0x00ffff)
+    # #embed.set_footer(text="")
+    #await channel.send(embed=embed)
+    #input()
     
     for channel_name in channels_to_remove:
         channel = discord.utils.get(guild.text_channels, name=channel_name)
@@ -1542,29 +1545,65 @@ async def myLoop():
         if notif:
             outstr_battle_report = []
             #print(notif)
-            notif_2 = sorted(notif.values())
+            notif_2 = notif.values()
             #print(notif_2)
             notif_2 = [item for sublist in notif_2 for item in sublist] # Flatten, see https://stackoverflow.com/a/952952
-            #print(notif_2)
-            course_updates = {} # normal, quotas, traps
+            notif_2 = [tuple(x) for x in notif_2]
+            try:
+                notif_2.sort()
+            except:
+                print(notif_2)
             
+            #print(notif_2)
+            course_updates = {} # normal (unused), quotas, traps
+            course_updates_2 = {} # normal only
             for each_notif in notif_2:
                 event, location, content = each_notif
                 location = fix_list_locations(location)
                 course = location.split(".")[0]
-                old_list = course_updates.get(course, [0,0,0])
+                
+                
                 if get_mention_role_type(each_notif) == "-traps":
+                    old_list = course_updates.get(course, [0,0,0])
                     old_list[2] += 1
-                    old_list[0] += 1 #recreate old behaviour
+                    course_updates[course] = old_list
                 elif get_mention_role_type(each_notif) == "-quotas":
+                    old_list = course_updates.get(course, [0,0,0])
                     old_list[1] += 1
-                    old_list[0] += 1 #recreate old behaviour
+                    course_updates[course] = old_list
                 else:
-                    old_list[0] += 1
-                course_updates[course] = old_list
+                    old_list_2 = course_updates_2.get(course[0:4], [0])
+                    old_list_2[0] += 1
+                    course_updates_2[course[0:4]] = old_list_2
+                
+                
             course_updates = {k: v for k, v in sorted(course_updates.items(), key=lambda item: item[0])}
+            course_updates_2 = {k: v for k, v in sorted(course_updates_2.items(), key=lambda item: item[0])}
             for course, ntq in course_updates.items():
-                outstr_battle_report.append("{}: {} update{}{}{}".format(course, ntq[0], "" if ntq[0]==1 else "s", ", \u001b[0;36mQUOTAS:{}\u001b[0;37m".format(ntq[1]) if ntq[1] else "", ", \u001b[0;35mTRAPS:{}\u001b[0;37m".format(ntq[2]) if ntq[2] else ""))
+                outstr_battle_report.append(
+                    #"{}: {} update{}{}{}{}".format(
+                    "{}: {}{}{}".format(
+                        course.ljust(9," "),
+                        #ntq[0],
+                        #"" if ntq[0] == 1 else "s",
+                        "\u001b[0;36mQUOTA:{} ".format(ntq[1]) if ntq[1] else "",
+                        "\u001b[0;35mTRAPS:{} ".format(ntq[2]) if ntq[2] else "",
+                        "\u001b[0;37m" if (ntq[1] or ntq[2]) else "",
+                    )
+                )
+            for course, ntq in course_updates_2.items():
+                outstr_battle_report.append(
+                    #"{}: {} update{}{}{}{}".format(
+                    "{}: {} update{}".format(
+                        course,
+                        ntq[0],
+                        "" if ntq[0] == 1 else "s",
+                        #", \u001b[0;36mQUOTAS:{}".format(ntq[1]) if ntq[1] else "",
+                        #", \u001b[0;35mTRAPS:{}".format(ntq[2]) if ntq[2] else "",
+                        #"\u001b[0;37m" if (ntq[1] or ntq[2]) else "",
+                    )
+                )
+
                 
             outstr_battle_report = "\n".join(outstr_battle_report)
             os.system("cls")
@@ -1572,6 +1611,34 @@ async def myLoop():
             
             if outstr_battle_report:
                 try:
+                    assert len(outstr_battle_report) < 4095
+                    channel = discord.utils.get(guild.text_channels, name="battle-report")
+                    embed=discord.Embed(title="Battle report", description="```ansi\n\u001b[0;37m{}\n```See: {}".format(outstr_battle_report, endpoint_ensured), color=0x00ffff)
+                    # embed.set_footer(text="")
+                    msg = await channel.send(embed=embed)
+                    try:
+                        assert channel.type == discord.ChannelType.news
+                        await msg.publish()
+                    except:
+                        pass
+                except:
+                    try:
+                        channel = discord.utils.get(guild.text_channels, name="battle-report")
+                        msg = await channel.send("Too many changes to document. Check CQO yourself".format(outstr_battle_report))
+                        try:
+                            assert channel.type == discord.ChannelType.news
+                            await msg.publish()
+                        except:
+                            pass
+                    except:
+                        channel = discord.utils.get(guild.text_channels, name="battle-report-fallback")
+                        msg = await channel.send("Too many changes to document AND rate-limit reached. Check CQO yourself".format(outstr_battle_report))
+                        try:
+                            assert channel.type == discord.ChannelType.news
+                            await msg.publish()
+                        except:
+                            pass
+                '''try:
                     channel = discord.utils.get(guild.text_channels, name="battle-report")
                     msg = await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
                     try:
@@ -1580,7 +1647,7 @@ async def myLoop():
                         pass
                 except:
                     channel = discord.utils.get(guild.text_channels, name="battle-report-fallback")
-                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))
+                    await channel.send("```ansi\n\u001b[0;37m{}\n```".format(outstr_battle_report))'''
     except Exception as e:
         exception_text = traceback.format_exc()
         exception_text = censor_exception(exception_text)
