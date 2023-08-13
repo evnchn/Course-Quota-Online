@@ -1,15 +1,209 @@
 
-from EnhancedDict import *
-allcourses_dict_old_forbot = {}
-
-
-
 
 import newdiffer
 
 import quotabeautify
 
 from base64 import b64encode, b64decode
+
+'''
+def GetCeilIndex(arr, T, l, r, key):
+ 
+    while (r - l > 1):
+     
+        m = l + (r - l)//2
+        if (arr[T[m]] >= key):
+            r = m
+        else:
+            l = m
+ 
+    return r
+  
+def LongestIncreasingSubsequence(arr, n):
+ 
+    # Add boundary case,
+    # when array n is zero
+    # Depend on smart pointers
+     
+    # Initialized with 0
+    tailIndices =[0 for i in range(n + 1)] 
+ 
+    # Initialized with -1
+    prevIndices =[-1 for i in range(n + 1)] 
+     
+    # it will always point
+    # to empty location
+    len_internal = 1
+    for i in range(1, n):
+     
+        if (arr[i] < arr[tailIndices[0]]):
+         
+            # new smallest value
+            tailIndices[0] = i
+         
+        elif (arr[i] > arr[tailIndices[len_internal-1]]):
+         
+            # arr[i] wants to extend
+            # largest subsequence
+            prevIndices[i] = tailIndices[len_internal-1]
+            tailIndices[len_internal] = i
+            len_internal += 1
+         
+        else:
+         
+            # arr[i] wants to be a
+            # potential condidate of
+            # future subsequence
+            # It will replace ceil
+            # value in tailIndices
+            pos = GetCeilIndex(arr, tailIndices, -1,
+                                   len_internal-1, arr[i])
+  
+            prevIndices[i] = tailIndices[pos-1]
+            tailIndices[pos] = i
+         
+    #print("LIS of given input")
+    i = tailIndices[len_internal-1]
+    constructarr = []
+    while(i >= 0):
+        constructarr.append(arr[i])
+        #print(arr[i], " ", end ="")
+        i = prevIndices[i]
+    #print()
+    
+    constructarr.reverse()
+    
+    #print(constructarr)
+  
+    return constructarr # len_internal
+    
+
+def moveelem_discord(arr, elem, ind):
+    if ind == len(arr):
+        arr.remove(elem)
+        arr.append(elem)
+        return arr
+    if ind == 1:
+        arr.remove(elem)
+        return [elem] + arr
+    
+    
+    arr.remove(elem)
+    arr.insert(ind-1, elem)
+    return arr
+
+def testing(arr, debug=False):
+    moves = []
+    # driver code
+    #arr = [ 2, 5, 3, 7, 11, 8, 10, 13, 6 ]
+    arr_orig = list(arr)
+    arr = list(arr)
+    assert len(list(set(arr))) == len(arr)
+
+    n = len(arr)
+      
+    LIS_output = LongestIncreasingSubsequence(arr, n)
+
+    sorted_arr = list(sorted(arr))
+
+    arr_with_flags = [(x, x in LIS_output) for x in arr]
+
+
+    elem_not_in = list(elem for elem in arr if elem not in LIS_output)
+
+    elem_not_in.sort()
+
+
+    
+
+    for elem in elem_not_in:
+    
+        arr_with_flags.remove(tuple((elem, False)))
+        #print(arr_with_flags)
+        if elem < min(x[0] for x in arr_with_flags if x[1]):
+            arr_with_flags = [tuple((elem, 1))] + arr_with_flags
+            moves.append((elem, 1))
+            arr = moveelem_discord(arr, elem, 1)
+            continue
+            
+        elif elem > max(x[0] for x in arr_with_flags if x[1]):
+            arr_with_flags = arr_with_flags + [tuple((elem, 1))]
+            moves.append((elem, len(arr)))
+            arr = moveelem_discord(arr, elem, len(arr))
+            continue
+        else:
+            ind = 0
+            while True:
+                if arr_with_flags[ind][1] and arr_with_flags[ind][0] > elem:
+                    break
+                ind += 1
+                
+            target_i = ind
+                    
+           
+        new_index = target_i
+        #print(new_index)
+        if debug:
+            print("move Elem[{}] to {}".format(elem, new_index))
+        
+        
+        
+        if target_i == -1:
+            arr_with_flags.append(tuple((elem, 1)))
+        else:
+            arr_with_flags.insert(new_index, tuple((elem, 1)))
+        
+        
+        moves.append((elem, target_i + 1))
+        
+        arr = moveelem_discord(arr, elem, target_i + 1)
+            
+    # arr = [x[0] for x in arr_with_flags]
+    if not arr == sorted_arr:
+        print(arr_orig)
+        print(arr)
+        print(arr_with_flags)
+        print(sorted_arr)
+        print("BAD!!!!!!!!!!!!!!!!!!!!!")
+        return False
+    return moves
+
+###### HIGHLY EXPERIMENTAL CODE
+
+
+
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 from urllib.parse import urljoin
 
@@ -36,14 +230,6 @@ import functools
 
 import requests
 import os
-import sys
-
-def clear_console():
-    if sys.platform.startswith('win'):
-        os.system('cls')
-    else:
-        os.system('clear')
-
 from tqdm import tqdm
 import json   
 import pyperclip
@@ -73,21 +259,6 @@ latest_state_json_file = str(pathlib.Path(__file__).parent.absolute() / "latest_
 
 internal_metadata_json_file = str(pathlib.Path(__file__).parent.absolute() / "internal_metadata.json")
 
-
-
-user_list_json_file = str(pathlib.Path(__file__).parent.absolute() / "user_list.json")
-
-
-
-def get_userlist():
-    with open(user_list_json_file, 'r') as f:
-        return json.load(f)
-    
-def save_userlist(usrlist):
-    with open(user_list_json_file, 'w') as f:
-        json.dump(usrlist, f)
-
-
 logfile_location = str(pathlib.Path(__file__).parent.absolute() / "logfile.txt")
 
 my_location = str(pathlib.Path(__file__).absolute())
@@ -104,6 +275,24 @@ import asyncio
 import concurrent.futures
 import requests
 
+
+
+
+
+'''
+import ssl
+
+FORCED_CIPHERS = (
+    'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
+    'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES'
+)
+sslcontext = ssl.create_default_context()
+# sslcontext.options |= ssl.OP_NO_SSLv3
+# sslcontext.options |= ssl.OP_NO_SSLv2
+# sslcontext.options |= ssl.OP_NO_TLSv1_1
+sslcontext.options |= ssl.OP_NO_TLSv1_2
+# sslcontext.options |= ssl.OP_NO_TLSv1_3
+sslcontext.set_ciphers(FORCED_CIPHERS)'''
 
 import aiohttp
 
@@ -162,7 +351,6 @@ def fix_list_locations(location):
 
 
 def censor_exception(exception_text):
-    return exception_text # unlikely to work on Linux
     base_directory = os.path.expanduser("~")
     base_directory_split = base_directory.split("\\")
     base_directory_split[-1] = "Heathcliff"
@@ -228,13 +416,6 @@ def check_it_out(diff):
     url2 = "http://evn.asuscomm.com:2280/{}{}".format(fourdigits, cc)
     
     return "{}\n{}".format(url2, url)
-
-def get_course_code(diff):
-    global endpoint_ensured
-    event, location, content = diff
-    location = fix_list_locations(location)
-    cc = location.split(".")[0]
-    return cc
     
 def is_important(diff):
     event, location, content = diff
@@ -295,7 +476,8 @@ def get_mention_role_type(diff):
 
 channels_to_remove = [str(i).rjust(4, "0") for i in range(60)]
 channels_to_remove += [(i+"-important") for i in channels_to_remove]
-channels_to_remove = ''''''.splitlines()
+channels_to_remove = '''acct,aesf,aiaa,amat,bibu,bien,bsbe,btec,cbme,ceng,chem,chms,ciem,civl,cmaa,comp,core,cpeg,csit,dasc,dbap,dsaa,dsct,econ,eemt,eesm,elec,emba,emia,eneg,engg,entr,envr,envs,eoas,evng,evsm,fina,ftec,gbus,gfin,gned,hlth,hmma,huma,ibtm,ieda,iimp,imba,intr,iota,ipen,isdn,isom,jeve,labu,lang,lifs,maed,mafs,mark,mass,math,mech,mesf,mfit,mgcs,mgmt,mics,mile,mimt,msbd,msdm,mtle,nano,oces,pdev,phys,ppol,rmbi,roas,sbmt,scie,seen,shss,smmg,sosc,sust,temg,ugod,urop,wbba,acct-important,aesf-important,aiaa-important,amat-important,bibu-important,bien-important,bsbe-important,btec-important,cbme-important,ceng-important,chem-important,chms-important,ciem-important,civl-important,cmaa-important,comp-important,core-important,cpeg-important,csit-important,dasc-important,dbap-important,dsaa-important,dsct-important,econ-important,eemt-important,eesm-important,elec-important,emba-important,emia-important,eneg-important,engg-important,entr-important,envr-important,envs-important,eoas-important,evng-important,evsm-important,fina-important,ftec-important,gbus-important,gfin-important,gned-important,hlth-important,hmma-important,huma-important,ibtm-important,ieda-important,iimp-important,imba-important,intr-important,iota-important,ipen-important,isdn-important,isom-important,jeve-important,labu-important,lang-important,lifs-important,maed-important,mafs-important,mark-important,mass-important,math-important,mech-important,mesf-important,mfit-important,mgcs-important,mgmt-important,mics-important,mile-important,mimt-important,msbd-important,msdm-important,mtle-important,nano-important,oces-important,pdev-important,phys-important,ppol-important,rmbi-important,roas-important,sbmt-important,scie-important,seen-important,shss-important,smmg-important,sosc-important,sust-important,temg-important,ugod-important,urop-important,wbba-important,misc,misc-important,debug,bootlog,able'''.split(",")
+
 channels_to_remove = []
 
 '''
@@ -483,134 +665,8 @@ def soup_to_allcourses_dict(soup, dept="MISC"):
 
 
 
-## NEWAINCRAD: The crux of the bot's operation
-@client.event
-async def on_message(message):
-    user_list = get_userlist()
-    if isinstance(message.channel, discord.DMChannel) and not message.author.bot:
-        # It's a private message and not sent by a bot
-        user_id = message.author.id
-
-        with open(latest_state_json_file,"r") as f:
-            allcourses_subscription = json.load(f)
-
-        message_content = message.content.replace(".", " ").replace(",", " ")
-        # Ignore punctuations
-        # also who knows what issue will happen if I access message class repeatedly
-
-        lower_message_content = message_content.lower()
-        # case insensitive
-
-        words = [x.strip() for x in lower_message_content.split(" ")]
-
-        course = "NULL0871" # can't be too sure that there won't be nullish keys down the line
-
-        for word in words:
-            if word.upper() in allcourses_subscription.keys():
-                
-                course = word.upper()
-                break
-        
-        if course == "NULL0871":
-            await message.channel.send(f"Please specify course code, without space. Loaded {len(allcourses_subscription.keys())} courses. ")
-            return
 
 
-
-        add_or_remove = ""
-        
-        important = False
-
-        if "important" in words:
-            important = True
-
-        everything = False
-
-        if "everything" in words:
-            everything = True
-
-        nothing = False
-
-        if "nothing" in words:
-            nothing = True
-
-        stats = False
-
-        if "stats" in words:
-            stats = True
-
-        if sum([important,everything,nothing,stats]) != 1:
-            await message.channel.send("Choose one of important/everything/nothing/stats")
-            return
-
-        message_important, message_unimportant = (False, False)
-
-        if important:
-            message_important, message_unimportant = (True, False)
-        elif everything:
-            message_important, message_unimportant = (True, True)
-        elif nothing:
-            message_important, message_unimportant = (False, False)
-        elif stats:
-            message_important, message_unimportant = (False, True)
-
-        try:
-            user_list[course]
-        except:
-            user_list[course] = {"I":[], "U":[]}
-
-        try:
-            # Check if user_list[course]["I"] is a list
-            assert isinstance(user_list[course]["I"], list), "user_list[course]['I'] is not a list"
-            # Check if user_list[course]["I"] has append() and remove() methods
-            assert hasattr(user_list[course]["I"], "append"), "user_list[course]['I'] does not have an append() method"
-            assert hasattr(user_list[course]["I"], "remove"), "user_list[course]['I'] does not have a remove() method"
-        except:
-            user_list[course]["I"] = []
-        
-        try:
-            # Check if user_list[course]["U"] is a list
-            assert isinstance(user_list[course]["U"], list), "user_list[course]['U'] is not a list"
-            # Check if user_list[course]["U"] has append() and remove() methods
-            assert hasattr(user_list[course]["U"], "append"), "user_list[course]['U'] does not have an append() method"
-            assert hasattr(user_list[course]["U"], "remove"), "user_list[course]['U'] does not have a remove() method"
-        except:
-            user_list[course]["U"] = []
-
-        if message_important:
-            user_list[course]["I"].append(user_id)
-        else:
-            try:
-                user_list[course]["I"].remove(user_id)
-            except:
-                pass
-
-        user_list[course]["I"] = list(set(user_list[course]["I"]))
-
-        if message_unimportant:
-            user_list[course]["U"].append(user_id)
-        else:
-            try:
-                user_list[course]["U"].remove(user_id)
-            except:
-                pass
-
-        user_list[course]["U"] = list(set(user_list[course]["U"]))
-
-
-        
-        print(user_list)
-        save_userlist(user_list)
-        await message.channel.send("Your command had worked. ")
-
-
-        # Notification types: [None], [Important], [Noise], [Everything]
-        # Add important, Add everything, remove everything
-
-
-
-
-        ## NEWINCRAD: I HOPE THIS WORKS
 
 
 
@@ -618,7 +674,8 @@ async def on_message(message):
 @client.event
 async def on_ready():
 
-    # await tree.sync(guild=discord.Object(id=GUILD_ID))
+
+    await tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Ready!")
     global channels_to_remove
     global guild_ensured
@@ -671,11 +728,8 @@ async def on_ready():
     for channel_name in channels_to_remove:
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if channel:
-            try:
-                print("Removing channel",channel_name)
-                await channel.delete()
-            except:
-                print("Not found channel",channel_name)
+            print("Removing channel",channel_name)
+            await channel.delete()
     channels_to_remove = []
     try:
         debug_write_to_file = False
@@ -686,7 +740,7 @@ async def on_ready():
 
         print(endpoint)
         if fake_endpoint:
-            endpoint = 'http://localhost:8000/'
+            endpoint = 'https://w5.ab.ust.hk/wcq/cgi-bin/2210/'
         url = endpoint
 
         page = requests.get(url)
@@ -716,9 +770,6 @@ async def on_ready():
     
     expected_channel_names = expected_channel_names + [(i+"-important") for i in expected_channel_names]
     # only lowercase letters in discord channels ... 
-
-    # NEWAINCRAD: we want none of the subjects but we want all of the bot zone 0 channels
-    expected_channel_names = []
     expected_channel_names.append("misc")
     expected_channel_names.append("misc-important")
     expected_channel_names.append("updates")
@@ -740,27 +791,9 @@ async def on_ready():
     
     print(",".join(expected_channel_names))
     
-    # NEWAINCRAD: We create those channels
-    for important_preboot_channels in expected_channel_names:
-        channel = discord.utils.get(guild.text_channels, name=important_preboot_channels)
-        if not channel:
-            try:
-                channel = await guild.create_text_channel(important_preboot_channels, category=category)
-                # await channel.edit(type=discord.ChannelType.news)
-                print(channel.type)
-            except Exception as e:
-                print(e)
-                print(traceback.format_exc())
-                await guild.create_text_channel(important_preboot_channels)
 
     # Given channel name,  try create in approproate bot zones. 
-
-
-    ## NEWAINCRAD: We no longer need to create any channels pre-boot
-
-
-
-    """for category_ug_pg in ("UG","PG"):
+    for category_ug_pg in ("UG","PG"):
         for need_important in (True, False):
         
         
@@ -853,7 +886,7 @@ async def on_ready():
                     else:
                         print("Fine, channel",expected_channel_name,"exists :)")
     
-"""
+
     
     ### THE FOLLOWING DOESN'T WORK BECAUSE API NOT PRESENT
     '''for category in guild.categories:
@@ -899,9 +932,7 @@ async def on_ready():
 
             else:
                 print("Doesn't need sorting",category.name)'''
-    
-    ## NEWAINCRAD: some issues with auto-sort. We dont need sorting for single bot zone anyways. 
-    """for category in guild.categories:
+    for category in guild.categories:
         
         if "Bot Zone" in category.name:
             print("Sorting",category.name)
@@ -917,7 +948,7 @@ async def on_ready():
                 for channel_name in channel_names:
                     print(channel_name)
                     await discord.utils.get(category.channels, name=channel_name).edit(position=channel_names.index(channel_name))
-                    print(channel_name, channel_names.index(channel_name))"""
+                    print(channel_name, channel_names.index(channel_name))
     channel = discord.utils.get(guild.text_channels, name="bootlog")
     
     for category in guild.categories:
@@ -1100,7 +1131,8 @@ async def myLoop():
             depts = depts.get_text("\n").split("\n")
             
             print(depts)
-            # clear_console()
+            #os.system("cls")
+
             
             try:
                 os.mkdir(str(pathlib.Path(__file__).parent.absolute() / "filestore"))
@@ -1261,7 +1293,7 @@ async def myLoop():
             
 
 
-        # clear_console()
+        #os.system("cls")
         
         
         
@@ -1273,6 +1305,7 @@ async def myLoop():
             
             with open(latest_state_json_file,"r") as f:
                 allcourses_dict_old = json.load(f)
+
             #pyperclip.copy(output)
             
             if allcourses_dict_old and allcourses_dict:
@@ -1292,7 +1325,7 @@ async def myLoop():
                         # Adding / deleting from root element, fake things a little. 
                         behaviour = diff[0]
                         for course in diff[2]:
-                            # clear_console()
+                            #os.system("cls")
                             #print(course)
                             
                             ccode, content = course
@@ -1381,11 +1414,7 @@ async def myLoop():
             await channel.send("admin pls help (loadmeta):\n```\n{}\n```\n{}".format(exception_text, e))
         
         #time.sleep(300)
-
-        ## NEWAINCRAD: no longer need to populate todos in the old way, since todos are just channel-directed messages.
-
-        ## NEWAINCRAD: We may still need notifs, that's the entire point. 
-        """try:
+        try:
             todos = []
             ignore_updates_count = 0
             
@@ -1439,77 +1468,6 @@ async def myLoop():
                                         await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
                             
                             ignore_updates_count += 1
-            print("Begin bang")
-            olddt = datetime.now().strftime("%H:%M:%S")
-            print(olddt)
-            
-
-            await asyncio.gather(*todos)
-            print("End bang")
-            print(olddt, datetime.now().strftime("%H:%M:%S"))
-        except Exception as e:
-            exception_text = traceback.format_exc()
-            exception_text = censor_exception(exception_text)
-            print(exception_text)
-            print(e)
-
-            channel = discord.utils.get(guild.text_channels, name="debug")
-            await channel.send("admin pls help (make_messages):\n```\n{}\n```\n{}".format(exception_text, e))
-        await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="{}'s data".format(datetime.now().strftime("%H:%M:%S"))))"""
-
-
-        # NEWAINCRAD: Rework todos generation for private messages
-
-        try:
-            todos = []
-            ignore_updates_count = 0
-            
-            
-            # suffix don't matter anymore
-            # for importancy, suffix in zip((True,False),("-important","")):
-            clear_console()
-            print("Notif")
-            print(notif)
-            print("-----")
-            print("Begin send")
-            for importancy in (True, False):
-                for k,v in notif.items():
-                    # channel creation has been removed entirely. 
-                    for sub_v in v:
-                        if importancy in is_important(sub_v) and filter_phantom_change(sub_v):
-                            if not ignore_updates:
-                                sending_string = "```ansi\n{}\n```See: {}\n{}_ _".format(preetify_diff(sub_v),check_it_out(sub_v), get_mention_roles(sub_v))
-                                ## Added ANSI formatting here
-                                print(sending_string)
-
-
-                                if len(sending_string) < 1900:
-                                    # todos.append(channel.send(sending_string))
-                                    course_code = get_course_code(sub_v)
-                                    letter = ""
-                                    if importancy:
-                                        letter = "I"
-                                    else:
-                                        letter = "U"
-                                    user_list = get_userlist()
-                                    for user_id in user_list[course_code][letter]:
-                                        user = await client.fetch_user(user_id)
-                                        if user is None:
-                                            print(f'User {user} not found.')
-                                            continue
-                                        try:
-                                            await user.send(sending_string)
-                                            await asyncio.sleep(1)
-                                            print('Private message sent.')
-                                        except discord.Forbidden:
-                                            print('Unable to send a private message to that user.')
-                                else:
-                                    with open(logfile_location, "a", encoding="utf-8") as lf:
-                                        lf.writelines(["###TOO-LONG-STRING###", sending_string, datetime.now().strftime("%H:%M:%S"), "------"])
-                                        channel = discord.utils.get(guild.text_channels, name="debug")
-                                        await channel.send("check logfile.txt to debug exceed 2000 characters NOW!")
-                            
-                            ignore_updates_count += 1 # this just a counter that always increments. 
             print("Begin bang")
             olddt = datetime.now().strftime("%H:%M:%S")
             print(olddt)
@@ -1648,7 +1606,7 @@ async def myLoop():
 
                 
             outstr_battle_report = "\n".join(outstr_battle_report)
-            # clear_console()
+            os.system("cls")
             print(outstr_battle_report)
             
             if outstr_battle_report:
@@ -1747,16 +1705,13 @@ async def myLoop():
         channel = discord.utils.get(guild.text_channels, name="debug")
         await channel.send("admin pls help (savemeta):\n```\n{}\n```\n{}".format(exception_text, e))
             
-
-
-
-
-
-    """try:
+            
+            
+    try:
         needping = False
         for category in guild.categories:
             if "Bot Zone" in category.name:
-                print("Sorting2",category.name)
+                print("Sorting",category.name)
                 channel_names_unsorted = list(channel.name for channel in category.channels)
                 channel_names = sorted(channel_names_unsorted)
             
@@ -1785,7 +1740,7 @@ async def myLoop():
             exception_text = traceback.format_exc()
             exception_text = censor_exception(exception_text)
             print(exception_text)
-            print(e)"""
+            print(e)
         
     
 
