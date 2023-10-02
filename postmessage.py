@@ -356,11 +356,11 @@ def soup_to_allcourses_dict(soup, dept="MISC"):
         coursetable_list_dicts = []
         quotadetail_info = None
         keys = coursetable.select('tr')[0].select("th")
-        keys = [k.text.replace(" & ", "_N_") for k in keys]
+        keys = [k.text.replace(" & ", "_N_").replace("/","_") for k in keys]
         for row in coursetable.select('tr')[1:]:
             fields = row.select("td")
             
-            if buffered_coursetable_row and len(fields) == 3: # is an extension
+            if buffered_coursetable_row and len(fields) == 4: # is an extension
                 '''buffered_coursetable_row_2 = [None for i in range(len(buffered_coursetable_row))]
                 buffered_coursetable_row_2 = ["" for i in range(len(buffered_coursetable_row))]
                 buffered_coursetable_row_2[1] = "; {}".format(fields[0].get_text(separator="_"))
@@ -371,6 +371,7 @@ def soup_to_allcourses_dict(soup, dept="MISC"):
                 buffered_coursetable_row[1].append(fields[0].get_text(separator="_"))
                 buffered_coursetable_row[2].append(fields[1].get_text(separator="_"))
                 buffered_coursetable_row[3].append(list(fields[2].stripped_strings)) #MUST LIST
+                buffered_coursetable_row[4].append(list(fields[3].stripped_strings)) #MUST LIST
                 continue # we are done
             else:
                 if buffered_coursetable_row:
@@ -400,13 +401,13 @@ def soup_to_allcourses_dict(soup, dept="MISC"):
                         buffered_coursetable_row[i] = int(field.select("span")[0].text)
                         # Working column-wise, unwise to process quotadetail here
                         quotadetail_info = tuple(field.select(".quotadetail")[0].stripped_strings)[1:]
-                    elif i in (3, ):
+                    elif i in (3,4):
                         buffered_coursetable_row[i] = [list(field.stripped_strings)] #MUST LIST
                     elif i in (1,2):
                         buffered_coursetable_row[i] = [field.get_text(separator="_")]
-                    elif i in (4,5,6):
+                    elif i in (5,6,7):
                         buffered_coursetable_row[i] = int(field.get_text(separator="_"))
-                    elif i in (8,):
+                    elif i in (9,):
                         mkdict = {}
                         if field.select(".popup.consent"):
                             mkdict["consent"] = True
